@@ -2,13 +2,13 @@
 import rospy
 import roslaunch
 import yaml
+import serial
 from yaml.loader import SafeLoader
 #import os
 import time
 import datetime
 from pathlib import Path
 from std_msgs.msg import Float32
-
 
 #these are all globa variables, used to take sensors' values
 BoxTemp =0.0
@@ -26,7 +26,6 @@ launchfile='run_dough.launch'
 paramfile='dough_parameters.yaml'
 originalpath=''
 starttime = datetime.datetime.now()
-
  
 def callback1(data):
     # print the actual message in its raw format
@@ -73,6 +72,9 @@ def callback9(data):
     #rospy.loginfo("PEl4 Temperature in Celsius is: %s", data.data)
     global PEl4
     PEl4=data.data   
+
+def sendcommand(voltage,polarity):
+    arduinoser = serial.Serial('COM4', 9600)
 
 def main():
     
@@ -139,6 +141,7 @@ def main():
                 targettemperature=paramdata["Process"][0]["routines"][cycleindicator-1]["temperature"]
                 if (changedegree==0 and changeintervalminutes==0):
                     while BoxTemp!=targettemperature:
+                        rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
                         gradientvstarget=targettemperature-BoxTemp
                         if (gradientvstarget<0): 
                             polarity="L" #In the motor controller meaning, "L" means backward, hence inverse polarity.
@@ -146,6 +149,9 @@ def main():
                         elif(gradientvstarget>0):
                             polarity="R" #In the motor controller meaning, "R" means forward, hence DC as per original polarity.
                             voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                            #pass the voltage and the controller polarity to Arduino
+                            time.sleep(30)
+                            rospy.Subscriber("/box_temp_Celsius", Float32, callback1)                        
                         else:
                             polarity="R"
                             voltage=0 
