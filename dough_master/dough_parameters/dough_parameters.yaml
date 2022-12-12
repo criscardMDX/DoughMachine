@@ -27,7 +27,7 @@ Process:
       - cycleNo: 4
         changedegree: -3
         changeintervalminutes: 15
-        temperature: 0
+        temperature: 26
         minstart: 120
         minend: 210
       - cycleNo: 5
@@ -39,7 +39,7 @@ Process:
       - cycleNo: 6
         changedegree: +3
         changeintervalminutes: 15
-        temperature: 0
+        temperature: 8
         minstart: 570
         minend: 660
       - cycleNo: 7
