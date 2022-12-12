@@ -1,0 +1,50 @@
+#This Yaml is used to set the parameters for the different types of dough #
+#Owner: Cristiano Cardarelli
+#Source: Personal Recipe
+---
+Process:
+  - name: Standard12hours
+    nocycles: 7
+    routines:
+      - cycleNo: 1
+        changedegree: 0
+        changeintervalminutes: 0
+        temperature: 31
+        minstart: 0
+        minend: 45
+      - cycleNo: 2
+        changedegree: 0
+        changeintervalminutes: 0
+        temperature: 28     
+        minstart: 45
+        minend: 105
+      - cycleNo: 3
+        changedegree: 0
+        changeintervalminutes: 0
+        temperature: 26
+        minstart: 105
+        minend: 120
+      - cycleNo: 4
+        changedegree: -3
+        changeintervalminutes: 15
+        temperature: 0
+        minstart: 120
+        minend: 210
+      - cycleNo: 5
+        changedegree: 0
+        changeintervalminutes: 0
+        temperature: 8
+        minstart: 210
+        minend: 570
+      - cycleNo: 6
+        changedegree: +3
+        changeintervalminutes: 15
+        temperature: 0
+        minstart: 570
+        minend: 660
+      - cycleNo: 7
+        changedegree: 0
+        changeintervalminutes: 0
+        temperature: 26
+        minstart: 660
+        minend: 720
