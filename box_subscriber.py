@@ -2,12 +2,15 @@
 import rospy
 import roslaunch
 import yaml
+import serial
 from yaml.loader import SafeLoader
-#import os
+import os
 import time
 import datetime
 from pathlib import Path
 from std_msgs.msg import Float32
+from std_msgs.msg import UInt16MultiArray
+
 
 
 #these are all globa variables, used to take sensors' values
@@ -26,7 +29,6 @@ launchfile='run_dough.launch'
 paramfile='dough_parameters.yaml'
 originalpath=''
 starttime = datetime.datetime.now()
-
  
 def callback1(data):
     # print the actual message in its raw format
@@ -72,10 +74,11 @@ def callback9(data):
     # print the actual message in its raw format
     #rospy.loginfo("PEl4 Temperature in Celsius is: %s", data.data)
     global PEl4
-    PEl4=data.data   
-
+    PEl4=data.data    
+       
 def main():
-    
+    VoltPolarity=[0,1,0] #Initialise the message array
+    if not rospy.is_shutdown(): os.system("killall -9 rosmaster") #Clean way to kill roscore if it exists
     # Identify the location of the launch file from the current working directory
     homepath=str(Path.home())
     originalpath=homepath+launchpath+launchfile
@@ -91,10 +94,6 @@ def main():
     ProcessName=paramdata["Process"][0]["name"]
     MaxNoOfCycles=paramdata["Process"][0]["nocycles"]    
 
-    #This was used to debug correct file location syntaxis 
-    #for f in os.listdir(Path(originalpath)):
-    #    print(f)
-
     # This code comes from https://answers.ros.org/question/215600/how-can-i-run-roscore-from-python/
     # I want to run roscore straight from the Python script and shut it down once the machine finishes her cycle
     # This script also offer the chance to include the launch file. The only issue I need to solve is in case the port changes.
@@ -104,11 +103,17 @@ def main():
     roslaunch.configure_logging(uuid)
     launch = roslaunch.parent.ROSLaunchParent(uuid, roslaunch_files=[launchfilelocation], is_core=True)
     launch.start()
+    
+    #Initialise the node that will communicate voltage and polarity back to Arduino    
+    pubvoltagepolarity = rospy.Publisher('/voltageAndPolarityInput', UInt16MultiArray, queue_size=10)
+    data_to_send = UInt16MultiArray()
+    data_to_send.data = VoltPolarity
   
-    # initialize a node by the name 'Dough_Machine_Input_Listener'.
+    # initialize a node by the name 'Dough_Machine_Input_Manager'.
     # instead of spin, that has its own cycle time, I would rather keep this into a state of constant monitoring
     while not rospy.is_shutdown():
-        rospy.init_node('Dough_Machine_Input_Listener', anonymous=True)  
+        rospy.init_node('Dough_Machine_Input_Manager', anonymous=True)
+        pubvoltagepolarity.publish(data_to_send) 
         rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
         rospy.Subscriber("/Distance_Cms", Float32, callback2)  
         rospy.Subscriber("/Humidity", Float32, callback3)
@@ -120,52 +125,77 @@ def main():
         rospy.Subscriber("/PEl_3_couple", Float32, callback9)
         MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4]
         print (MeasurementArray)
-        rospy.sleep(1)    
-        # spin() simply keeps python from exiting until this node is stopped, but it creates issues with timing.
-        # I would rather collect every ping from the dough machine.
-        #rospy.spin()
+        rospy.sleep(0.2)
         
-        # Algorythm to control the temperature in the box. The additional information is in the notes to this experiment (Notes: 10th December)
-        timenow=datetime.datetime.now()
-        timediff=timenow-starttime
-        minsdiff=round((timediff.total_seconds()/60),0)
-        for cycleindicator in range(1,MaxNoOfCycles+1):
-            minstart=paramdata["Process"][0]["routines"][cycleindicator-1]["minstart"]
-            minend=paramdata["Process"][0]["routines"][cycleindicator-1]["minend"]
-            if minend >= minsdiff >= minstart :
-                cycleNo=paramdata["Process"][0]["routines"][cycleindicator-1]["cycleNo"]
-                changedegree=paramdata["Process"][0]["routines"][cycleindicator-1]["changedegree"]
-                changeintervalminutes=paramdata["Process"][0]["routines"][cycleindicator-1]["changeintervalminutes"]
-                targettemperature=paramdata["Process"][0]["routines"][cycleindicator-1]["temperature"]
-                if (changedegree==0 and changeintervalminutes==0):
-                    while BoxTemp!=targettemperature:
-                        gradientvstarget=targettemperature-BoxTemp
-                        if (gradientvstarget<0): 
-                            polarity="L" #In the motor controller meaning, "L" means backward, hence inverse polarity.
-                            voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                        elif(gradientvstarget>0):
-                            polarity="R" #In the motor controller meaning, "R" means forward, hence DC as per original polarity.
-                            voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                        else:
-                            polarity="R"
-                            voltage=0 
-                elif (changedegree!=0 and changeintervalminutes!=0):
-                    timenowgradient=datetime.datetime.now()
-                    targettemperature=BoxTemp+changedegree
-                    while timenowgradient<timenowgradient+changeintervalminutes:
-                        while BoxTemp<targettemperature:
-                            if changedegree<0:
-                                polarity="L"
-                                voltage=int(abs(changedegree)/BoxTemp*255)
-                        
-                    
+        while BoxTemp!=0:
+            # spin() simply keeps python from exiting until this node is stopped, but it creates issues with timing.
+            # I would rather collect every ping from the dough machine.
+            #rospy.spin()
             
-            
-
-    
-    
-    
-
+            # Algorythm to control the temperature in the box. The additional information is in the notes to this experiment (Notes: 10th December)
+            timenow=datetime.datetime.now()
+            timediff=timenow-starttime
+            minsdiff=round((timediff.total_seconds()/60),0)
+            for cycleindicator in range(1,MaxNoOfCycles+1):
+                minstart=paramdata["Process"][0]["routines"][cycleindicator-1]["minstart"]
+                minend=paramdata["Process"][0]["routines"][cycleindicator-1]["minend"]
+                if minend >= minsdiff >= minstart :
+                    cycleNo=paramdata["Process"][0]["routines"][cycleindicator-1]["cycleNo"]
+                    changedegree=paramdata["Process"][0]["routines"][cycleindicator-1]["changedegree"]
+                    changeintervalminutes=paramdata["Process"][0]["routines"][cycleindicator-1]["changeintervalminutes"]
+                    targettemperature=paramdata["Process"][0]["routines"][cycleindicator-1]["temperature"]
+                    if (changedegree==0 and changeintervalminutes==0):
+                        while BoxTemp!=targettemperature:
+                            rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
+                            gradientvstarget=targettemperature-BoxTemp
+                            if (gradientvstarget<0): 
+                                polarity=0 #In the motor controller meaning, "L" means backward, hence inverse polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                            elif(gradientvstarget>0):
+                                polarity=1 #In the motor controller meaning, "R" means forward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                            else:
+                                polarity=1 #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                voltage=0
+                            if voltage<150: 
+                                    voltage=150
+                            else:   voltage=250
+                            #send both voltage and polarity back to Arduino
+                            VoltPolarity=[voltage, polarity,cycleNo]
+                            data_to_send.data = VoltPolarity
+                            #rospy.Publisher("/voltageAndPolarityCommand",UInt16MultiArray, callback10)
+                            pubvoltagepolarity.publish(data_to_send) 
+                            #rospy.loginfo(VoltPolarity)
+                            #pub.publish(VoltPolarity)
+                            #rate.sleep()
+                            time.sleep(0.5)
+                            #read again the temperature after 30 seconds
+                            rospy.Subscriber("/box_temp_Celsius", Float32, callback1)                        
+                    elif (changedegree!=0 and changeintervalminutes!=0):    #here the temperature in the Yaml file is the final temperature from the previous stage. 
+                        starttemperature=targettemperature
+                        timenowIFgradient=datetime.datetime.now()             #I wanted to make sure not to take the Box temperature as starting value to calculate the gradient, as this may generate errors.
+                        while timenowIFgradient<=minend:
+                            timenowIFgradient=datetime.datetime.now()  
+                            timestack=timenowIFgradient+changeintervalminutes
+                            temperaturestack=starttemperature+changedegree
+                            timestackNo+=1
+                            while timenowIFgradient<=timestack:
+                                while BoxTemp != temperaturestack:
+                                    voltage=200
+                                    if BoxTemp<temperaturestack: polarity="1" #this is the case of a positive positive for a certain an amount of time change interval minutes        
+                                    elif BoxTemp>temperaturestack: polarity="0" #this is the case of a negative difference for a certain an amount of time change interval minutes
+                                    else: 
+                                        voltage=0
+                                        polarity=1
+                                #send both voltage and polarity back to Arduino
+                                VoltPolarity=[voltage, polarity,cycleNo]
+                                data_to_send.data = VoltPolarity
+                                pubvoltagepolarity.publish(data_to_send) 
+                                time.sleep(0.5)
+                                #read again the temperature after 30 seconds
+                                rospy.Subscriber("/box_temp_Celsius", Float32, callback1)         
+                                timenowIFgradient=datetime.datetime.now()
+  
     #After the machine has finished its cycle, it should kill roscore and its sub processes
     launch.shutdown()
   
