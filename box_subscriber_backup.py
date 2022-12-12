@@ -76,16 +76,9 @@ def callback9(data):
     global PEl4
     PEl4=data.data    
        
-
-def sendcommand(voltage,polarity):
-    arduinoser = serial.Serial('COM4', 9600)
-
 def main():
-    VoltPolarity=[0,'R']
-        #Clean way to kill roscore if it exists
-    if not rospy.is_shutdown(): os.system("killall -9 rosmaster") 
-        
-        
+    VoltPolarity=[0,1,0] #Initialise the message array
+    if not rospy.is_shutdown(): os.system("killall -9 rosmaster") #Clean way to kill roscore if it exists
     # Identify the location of the launch file from the current working directory
     homepath=str(Path.home())
     originalpath=homepath+launchpath+launchfile
@@ -132,7 +125,7 @@ def main():
         rospy.Subscriber("/PEl_3_couple", Float32, callback9)
         MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4]
         print (MeasurementArray)
-        rospy.sleep(0.5)
+        rospy.sleep(0.2)
         
         while BoxTemp!=0:
             # spin() simply keeps python from exiting until this node is stopped, but it creates issues with timing.
@@ -168,7 +161,7 @@ def main():
                                     voltage=150
                             else:   voltage=250
                             #send both voltage and polarity back to Arduino
-                            VoltPolarity=[voltage, polarity]
+                            VoltPolarity=[voltage, polarity,cycleNo]
                             data_to_send.data = VoltPolarity
                             #rospy.Publisher("/voltageAndPolarityCommand",UInt16MultiArray, callback10)
                             pubvoltagepolarity.publish(data_to_send) 
@@ -178,26 +171,33 @@ def main():
                             time.sleep(0.5)
                             #read again the temperature after 30 seconds
                             rospy.Subscriber("/box_temp_Celsius", Float32, callback1)                        
-                             
-                    elif (changedegree!=0 and changeintervalminutes!=0):
-                        timenowgradient=datetime.datetime.now()
-                        targettemperature=BoxTemp+changedegree
-                        while timenowgradient<timenowgradient+changeintervalminutes:
-                            while BoxTemp<targettemperature:
-                                if changedegree<0:
-                                    polarity="0"
-                                    voltage=int(abs(changedegree)/BoxTemp*255)
-                            
-                    
-            
-            
-
-    
-    
-    
-
+                    elif (changedegree!=0 and changeintervalminutes!=0):    #here the temperature in the Yaml file is the final temperature from the previous stage. 
+                        starttemperature=targettemperature
+                        timenowIFgradient=datetime.datetime.now()             #I wanted to make sure not to take the Box temperature as starting value to calculate the gradient, as this may generate errors.
+                        while timenowIFgradient<=minend:
+                            timenowIFgradient=datetime.datetime.now()  
+                            timestack=timenowIFgradient+changeintervalminutes
+                            temperaturestack=starttemperature+changedegree
+                            timestackNo+=1
+                            while timenowIFgradient<=timestack:
+                                while BoxTemp != temperaturestack:
+                                    voltage=200
+                                    if BoxTemp<temperaturestack: polarity="1" #this is the case of a positive positive for a certain an amount of time change interval minutes        
+                                    elif BoxTemp>temperaturestack: polarity="0" #this is the case of a negative difference for a certain an amount of time change interval minutes
+                                    else: 
+                                        voltage=0
+                                        polarity=1
+                                #send both voltage and polarity back to Arduino
+                                VoltPolarity=[voltage, polarity,cycleNo]
+                                data_to_send.data = VoltPolarity
+                                pubvoltagepolarity.publish(data_to_send) 
+                                time.sleep(0.5)
+                                #read again the temperature after 30 seconds
+                                rospy.Subscriber("/box_temp_Celsius", Float32, callback1)         
+                                timenowIFgradient=datetime.datetime.now()
+  
     #After the machine has finished its cycle, it should kill roscore and its sub processes
-    #launch.shutdown()
+    launch.shutdown()
   
   
 if __name__ == '__main__':
