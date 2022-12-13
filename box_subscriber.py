@@ -12,6 +12,7 @@ from std_msgs.msg import Float32
 from std_msgs.msg import Int32MultiArray
 from std_msgs.msg import String
 
+
 #these are all globa variables, used to take sensors' values
 BoxTemp =0.0
 DistanceCm=0.0
@@ -78,9 +79,12 @@ def callback9(data):
 def main():
     VoltPolarity=[0,1,0] #Initialise the message array
     SampleNo=0
-    Sleeprate=2.0
-    StatusFollowUp=[]
-    if not rospy.is_shutdown(): os.system("killall -9 rosmaster") #Clean way to kill roscore if it exists
+    Sleeprate=0
+    StatusFollowUp="no message"
+    
+    if not rospy.is_shutdown(): 
+        os.system("killall -9 rosmaster") #Clean way to kill roscore if it exists
+        rospy.sleep(2)
     # Identify the location of the launch file from the current working directory
     homepath=str(Path.home())
     originalpath=homepath+launchpath+launchfile
@@ -120,6 +124,7 @@ def main():
     while not rospy.is_shutdown():
         rospy.init_node('Dough_Machine_Input_Manager', anonymous=True)
         pubvoltagepolarity.publish(data_to_send) 
+        pubprocessstatus.publish(StatusFollowUp[0])
         rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
         rospy.Subscriber("/Distance_Cms", Float32, callback2)  
         rospy.Subscriber("/Humidity", Float32, callback3)
@@ -161,15 +166,17 @@ def main():
                                 if (gradientvstarget<0): 
                                     polarity=0 #In the motor controller meaning, "L" means backward, hence inverse polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
                                     voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                                    voltage=255#For now, I run them max
                                 elif(gradientvstarget>0):
                                     polarity=1 #In the motor controller meaning, "R" means forward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
                                     voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                                    voltage=255 #For now, I run them max
                                 else:
                                     polarity=1 #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
                                     voltage=0
                                 if voltage<150: 
                                         voltage=200
-                                else:   voltage=250
+                                else:   voltage=255
                                 #send both voltage and polarity back to Arduino
                                 VoltPolarity=[voltage, polarity,cycleNo]
                                 data_to_send.data = VoltPolarity
@@ -184,10 +191,11 @@ def main():
                                 timenow=datetime.datetime.now()
                                 timediff=timenow-starttime
                                 minsdiff=round((timediff.total_seconds()/60),0)
-                                StatusFollowUp=["StableTemp: "+str(targettemperature),str(timenow), str(voltage),
-                                                        str(polarity),str(cycleNo),str(minsdiff),str(minend)]
+                                StatusFollowUp=["StableTargetTemp: "+str(targettemperature)+" | "+str(BoxTemp)+" | "+str(timenow)+" | "+ str(voltage)+" | "+
+                                                        str(polarity)+" | "+str(cycleNo)+" | "+str(minsdiff)+" | "+str(minend)]
                                 MsgFollowUp.data = StatusFollowUp
-                                pubprocessstatus.publish(StatusFollowUp)
+                                pubprocessstatus.publish(StatusFollowUp[0])
+                                time.sleep(0.2)
                             print(StatusFollowUp)                        
                     elif (changedegree!=0 and changeintervalminutes!=0):    #here the temperature in the Yaml file is the final temperature from the previous stage. 
                         starttemperature=targettemperature
@@ -205,19 +213,20 @@ def main():
                                     else: 
                                         voltage=0
                                         polarity=1
-                                #send both voltage and polarity back to Arduino
-                                VoltPolarity=[voltage, polarity,cycleNo]
-                                data_to_send.data = VoltPolarity
-                                pubvoltagepolarity.publish(data_to_send) 
-                                time.sleep(0.5)
-                                #read again the temperature after 30 seconds
-                                rospy.Subscriber("/box_temp_Celsius", Float32, callback1)         
-                                timenowIFgradient=datetime.datetime.now()
-                            StatusFollowUp=["GradientTimestack: "+str(timestackNo),str(timenowIFgradient), str(voltage),
-                                            str(polarity),str(cycleNo),str(minsdiff),str(minend)]
-                            MsgFollowUp.data = StatusFollowUp
-                            pubprocessstatus.publish(StatusFollowUp)
-                            print(StatusFollowUp)                        
+                                    #send both voltage and polarity back to Arduino
+                                    VoltPolarity=[voltage, polarity,cycleNo]
+                                    data_to_send.data = VoltPolarity
+                                    pubvoltagepolarity.publish(data_to_send) 
+                                    time.sleep(0.5)
+                                    #read again the temperature after 30 seconds
+                                    rospy.Subscriber("/box_temp_Celsius", Float32, callback1)         
+                                    timenowIFgradient=datetime.datetime.now()
+                                    StatusFollowUp=["GradientTimestack: "+str(timestackNo)+" | "+str(timenowIFgradient)+" | "+ str(voltage)+" | "+
+                                                    str(polarity)+" | "+str(cycleNo)+" | "+str(minsdiff)+" | "+str(minend)]
+                                    MsgFollowUp.data = StatusFollowUp
+                                    pubprocessstatus.publish(StatusFollowUp[0])
+                                    time.sleep(0.2)
+                                    print(StatusFollowUp)                        
                 StatusFollowUp=["CycleChangeLvl: "+cycleNo,timenowIFgradient, voltage,polarity,cycleNo,minsdiff,minend]
                 print(StatusFollowUp)
   
