@@ -35,8 +35,8 @@ logfileName="LogFile"
 logdata="no message"
 
 def createlogfile(logdata):
-    with open(os.path.join(logpath, logfileName+str(starttime)+".txt"), 'w') as LogFile:
-        LogFile.write(logdata+"\n")
+    with open(logfileName+str(starttime)+".txt", 'a') as LogFile:
+        LogFile.write(logdata[0]+"\n")
         
 
 
