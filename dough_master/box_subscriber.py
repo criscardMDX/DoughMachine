@@ -11,8 +11,6 @@ from pathlib import Path
 from std_msgs.msg import Float32
 from std_msgs.msg import UInt16MultiArray
 
-
-
 #these are all globa variables, used to take sensors' values
 BoxTemp =0.0
 DistanceCm=0.0
@@ -76,15 +74,9 @@ def callback9(data):
     global PEl4
     PEl4=data.data    
        
-def sendcommand(voltage,polarity):
-    arduinoser = serial.Serial('COM4', 9600)
-
 def main():
-    VoltPolarity=[0,1,0]
-        #Clean way to kill roscore if it exists
-    if not rospy.is_shutdown(): os.system("killall -9 rosmaster") 
-        
-        
+    VoltPolarity=[0,1,0] #Initialise the message array
+    if not rospy.is_shutdown(): os.system("killall -9 rosmaster") #Clean way to kill roscore if it exists
     # Identify the location of the launch file from the current working directory
     homepath=str(Path.home())
     originalpath=homepath+launchpath+launchfile
@@ -98,7 +90,7 @@ def main():
         #print(paramdata["Process"][0]["name"]) #Here I take the name of the process 
         #print(paramdata["Process"][0]["nocycles"]) #Here I take the maximum amount of cycles for the "for" cycle to regulate temperature.
     ProcessName=paramdata["Process"][0]["name"]
-    MaxNoOfCycles=paramdata["Process"][0]["nocycles"]    
+    MaxNoOfCycles=paramdata["Process"][0]["nocycles"]   
 
     # This code comes from https://answers.ros.org/question/215600/how-can-i-run-roscore-from-python/
     # I want to run roscore straight from the Python script and shut it down once the machine finishes her cycle
@@ -131,9 +123,10 @@ def main():
         rospy.Subscriber("/PEl_3_couple", Float32, callback9)
         MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4]
         print (MeasurementArray)
-        rospy.sleep(0.2)
+        rospy.sleep(0.1)
         
         while BoxTemp!=0:
+            print("Connection Established)")
             # spin() simply keeps python from exiting until this node is stopped, but it creates issues with timing.
             # I would rather collect every ping from the dough machine.
             #rospy.spin()
@@ -174,10 +167,9 @@ def main():
                             #rospy.loginfo(VoltPolarity)
                             #pub.publish(VoltPolarity)
                             #rate.sleep()
-                            time.sleep(0.5)
+                            time.sleep(0.3)
                             #read again the temperature after 30 seconds
                             rospy.Subscriber("/box_temp_Celsius", Float32, callback1)                        
-  
                     elif (changedegree!=0 and changeintervalminutes!=0):    #here the temperature in the Yaml file is the final temperature from the previous stage. 
                         starttemperature=targettemperature
                         timenowIFgradient=datetime.datetime.now()             #I wanted to make sure not to take the Box temperature as starting value to calculate the gradient, as this may generate errors.
