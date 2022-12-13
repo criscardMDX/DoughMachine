@@ -10,6 +10,7 @@ import datetime
 from pathlib import Path
 from std_msgs.msg import Float32
 from std_msgs.msg import Int32MultiArray
+from std_msgs.msg import String
 
 #these are all globa variables, used to take sensors' values
 BoxTemp =0.0
@@ -78,6 +79,7 @@ def main():
     VoltPolarity=[0,1,0] #Initialise the message array
     SampleNo=0
     Sleeprate=2.0
+    StatusFollowUp=[]
     if not rospy.is_shutdown(): os.system("killall -9 rosmaster") #Clean way to kill roscore if it exists
     # Identify the location of the launch file from the current working directory
     homepath=str(Path.home())
@@ -108,6 +110,10 @@ def main():
     pubvoltagepolarity = rospy.Publisher('/voltageAndPolarityInput', Int32MultiArray, queue_size=10)
     data_to_send = Int32MultiArray()
     data_to_send.data = VoltPolarity
+    #New Node to communicate the status of the process
+    pubprocessstatus=rospy.Publisher('/ProcessStatus', String, queue_size=10)
+    MsgFollowUp = String()
+    MsgFollowUp.data = StatusFollowUp
   
     # initialize a node by the name 'Dough_Machine_Input_Manager'.
     # instead of spin, that has its own cycle time, I would rather keep this into a state of constant monitoring
@@ -162,7 +168,7 @@ def main():
                                     polarity=1 #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
                                     voltage=0
                                 if voltage<150: 
-                                        voltage=150
+                                        voltage=200
                                 else:   voltage=250
                                 #send both voltage and polarity back to Arduino
                                 VoltPolarity=[voltage, polarity,cycleNo]
@@ -175,10 +181,13 @@ def main():
                                 time.sleep(0.5)
                                 #read again the temperature after 30 seconds
                                 rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
-                            timenow=datetime.datetime.now()
-                            timediff=timenow-starttime
-                            minsdiff=round((timediff.total_seconds()/60),0)
-                            StatusFollowUp=["StableTemp: "+targettemperature,timenow, voltage,polarity,cycleNo,minsdiff,minend]
+                                timenow=datetime.datetime.now()
+                                timediff=timenow-starttime
+                                minsdiff=round((timediff.total_seconds()/60),0)
+                                StatusFollowUp=["StableTemp: "+str(targettemperature),str(timenow), str(voltage),
+                                                        str(polarity),str(cycleNo),str(minsdiff),str(minend)]
+                                MsgFollowUp.data = StatusFollowUp
+                                pubprocessstatus.publish(StatusFollowUp)
                             print(StatusFollowUp)                        
                     elif (changedegree!=0 and changeintervalminutes!=0):    #here the temperature in the Yaml file is the final temperature from the previous stage. 
                         starttemperature=targettemperature
@@ -204,7 +213,10 @@ def main():
                                 #read again the temperature after 30 seconds
                                 rospy.Subscriber("/box_temp_Celsius", Float32, callback1)         
                                 timenowIFgradient=datetime.datetime.now()
-                            StatusFollowUp=["GradientTimestack: "+timestackNo,timenowIFgradient, voltage,polarity,cycleNo,minsdiff,minend]
+                            StatusFollowUp=["GradientTimestack: "+str(timestackNo),str(timenowIFgradient), str(voltage),
+                                            str(polarity),str(cycleNo),str(minsdiff),str(minend)]
+                            MsgFollowUp.data = StatusFollowUp
+                            pubprocessstatus.publish(StatusFollowUp)
                             print(StatusFollowUp)                        
                 StatusFollowUp=["CycleChangeLvl: "+cycleNo,timenowIFgradient, voltage,polarity,cycleNo,minsdiff,minend]
                 print(StatusFollowUp)

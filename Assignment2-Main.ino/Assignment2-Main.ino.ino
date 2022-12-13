@@ -70,6 +70,7 @@ int PEl_polarity=voltageprovided.data[1];
 int CycleNumber=voltageprovided.data[2];
 int PEl_PolCharPrev='R';
 int PEl_PolChar='R';
+Serial.println("PEl voltage is: "+String(PEl_voltage));
   if (PEl_polarity==0){ 
      int PEl_PolChar='L';
      if (PEl_PolChar!=PEl_PolCharPrev){
@@ -120,7 +121,7 @@ float tempMax = 0;                    /*variable to store temperature in degree 
 unsigned long interruptcounter = 0;   /* loop counter */
 unsigned long previousMillis = 0;     /* to store previous time */ 
 long duration, inches, cm;
-const long interruptinterval = 2000;  /* every measurement is taken after 3 seconds */
+const long interruptinterval = 2000;  /* every measurement is taken after 2 seconds */
 const int pingPin = 5; // Trigger Pin of Ultrasonic Sensor
 const int echoPin = 2; // Echo Pin of Ultrasonic Sensor
 
@@ -230,6 +231,11 @@ float val = 1023;
 float duty = map(val,0,1023,0,255);
 analogWrite(npnpin, duty); //here's how to generate PWM signal from Digital arduino pin
 
+//int PEl_voltage=voltageprovided.data[0];
+//int PEl_polarity=voltageprovided.data[1];
+//int CycleNumber=voltageprovided.data[2];
+
+
 /*In this block I use an interrupt to establish the frequency of all sensors' measurements.
 I do not want to measure too often as this process does not need constant monitoring */
 
@@ -293,7 +299,7 @@ if (currentMillis - previousMillis >= interruptinterval) {
   Serial.print(inches);
   Serial.print("in, ");
   Serial.print(cm);
-  Serial.print("cm");
+  Serial.println("cm");
   Serial.println();
 /*After prinitng on the serial, I transfer the same data from Arduino to ROS */
   my_CO2ppm_float_data.data = co2ppm;
@@ -314,9 +320,10 @@ if (currentMillis - previousMillis >= interruptinterval) {
   tempc3_pub_ardu.publish(&my_tempc3_float_data);
   my_tempc4_float_data.data = tempc4;
   tempc4_pub_ardu.publish(&my_tempc4_float_data);
+  
   }
 nh.spinOnce();
-  
+
 /*Here I set the distance measurement from the ultrasonic sensor*/
 pinMode(pingPin, OUTPUT);
 digitalWrite(pingPin, LOW);
@@ -328,7 +335,6 @@ pinMode(echoPin, INPUT);
 duration = pulseIn(echoPin, HIGH);
 inches = microsecondsToInches(duration);
 cm = microsecondsToCentimeters(duration);
-
 }
 
 
