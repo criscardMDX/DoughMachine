@@ -7,6 +7,7 @@ from yaml.loader import SafeLoader
 import os
 import time
 import datetime
+import logging
 from pathlib import Path
 from std_msgs.msg import Float32
 from std_msgs.msg import Int32MultiArray
@@ -25,11 +26,24 @@ PEl3=0.0
 PEl4=0.0
 launchpath = '/catkin_ws/src/dough_master/dough_launch/'
 parampath = '/catkin_ws/src/dough_master/dough_parameters/'
+logpath='/catkin_ws/src/dough_master/dough_logfiles'
 launchfile='run_dough.launch'
 paramfile='dough_parameters.yaml'
 originalpath=''
 starttime = datetime.datetime.now()
- 
+logfileName="LogFile"
+logdata="no message"
+
+def createlogfile(logdata):
+    with open(os.path.join(logpath, logfileName+str(starttime)+".txt"), 'w') as LogFile:
+        LogFile.write(logdata+"\n")
+        
+
+
+
+
+
+
 def callback1(data):
     # print the actual message in its raw format
     #rospy.loginfo("The Box temperature in Celsius is Value is: %s", data.data)
@@ -75,13 +89,19 @@ def callback9(data):
     #rospy.loginfo("PEl4 Temperature in Celsius is: %s", data.data)
     global PEl4
     PEl4=data.data    
-       
+
+
+
+
+
+
+
+
 def main():
     VoltPolarity=[0,1,0] #Initialise the message array
     SampleNo=0
-    Sleeprate=0
-    StatusFollowUp="no message"
-    
+    Sleeprate=0.5
+    StatusFollowUp='no message'
     if not rospy.is_shutdown(): 
         os.system("killall -9 rosmaster") #Clean way to kill roscore if it exists
         rospy.sleep(2)
@@ -137,7 +157,7 @@ def main():
         SampleNo+=1
         MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4,SampleNo]
         print (MeasurementArray)
-        while SampleNo>10: Sleeprate=0.1 
+        while (SampleNo>10 and BoxTemp==0): Sleeprate=0
         Sleeprate=2
         rospy.sleep(Sleeprate)
         
@@ -195,8 +215,9 @@ def main():
                                                         str(polarity)+" | "+str(cycleNo)+" | "+str(minsdiff)+" | "+str(minend)]
                                 MsgFollowUp.data = StatusFollowUp
                                 pubprocessstatus.publish(StatusFollowUp[0])
-                                time.sleep(0.2)
-                            print(StatusFollowUp)                        
+                                time.sleep(0.5)
+                                print(StatusFollowUp)
+                                createlogfile(StatusFollowUp)                      
                     elif (changedegree!=0 and changeintervalminutes!=0):    #here the temperature in the Yaml file is the final temperature from the previous stage. 
                         starttemperature=targettemperature
                         timenowIFgradient=datetime.datetime.now()             #I wanted to make sure not to take the Box temperature as starting value to calculate the gradient, as this may generate errors.
@@ -225,10 +246,13 @@ def main():
                                                     str(polarity)+" | "+str(cycleNo)+" | "+str(minsdiff)+" | "+str(minend)]
                                     MsgFollowUp.data = StatusFollowUp
                                     pubprocessstatus.publish(StatusFollowUp[0])
-                                    time.sleep(0.2)
-                                    print(StatusFollowUp)                        
+                                    time.sleep(0.5)
+                                    print(StatusFollowUp)
+                                    createlogfile(StatusFollowUp)                        
                 StatusFollowUp=["CycleChangeLvl: "+cycleNo,timenowIFgradient, voltage,polarity,cycleNo,minsdiff,minend]
                 print(StatusFollowUp)
+                createlogfile(StatusFollowUp)
+                
   
     #After the machine has finished its cycle, it should kill roscore and its sub processes
     launch.shutdown()
