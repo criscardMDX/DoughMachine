@@ -1,0 +1,8 @@
+prefix=/home/criscar/scripts/build/devel
+
+Name: dough_master
+Description: Description of dough_master
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

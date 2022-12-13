@@ -9,9 +9,7 @@ import time
 import datetime
 from pathlib import Path
 from std_msgs.msg import Float32
-from std_msgs.msg import UInt16MultiArray
-
-
+from std_msgs.msg import Int32MultiArray
 
 #these are all globa variables, used to take sensors' values
 BoxTemp =0.0
@@ -105,8 +103,8 @@ def main():
     launch.start()
     
     #Initialise the node that will communicate voltage and polarity back to Arduino    
-    pubvoltagepolarity = rospy.Publisher('/voltageAndPolarityInput', UInt16MultiArray, queue_size=10)
-    data_to_send = UInt16MultiArray()
+    pubvoltagepolarity = rospy.Publisher('/voltageAndPolarityInput', Int32MultiArray, queue_size=10)
+    data_to_send = Int32MultiArray()
     data_to_send.data = VoltPolarity
   
     # initialize a node by the name 'Dough_Machine_Input_Manager'.
@@ -163,7 +161,7 @@ def main():
                             #send both voltage and polarity back to Arduino
                             VoltPolarity=[voltage, polarity,cycleNo]
                             data_to_send.data = VoltPolarity
-                            #rospy.Publisher("/voltageAndPolarityCommand",UInt16MultiArray, callback10)
+                            #rospy.Publisher("/voltageAndPolarityCommand",Int32MultiArray, callback10)
                             pubvoltagepolarity.publish(data_to_send) 
                             #rospy.loginfo(VoltPolarity)
                             #pub.publish(VoltPolarity)
