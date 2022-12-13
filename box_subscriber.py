@@ -76,6 +76,8 @@ def callback9(data):
        
 def main():
     VoltPolarity=[0,1,0] #Initialise the message array
+    SampleNo=0
+    Sleeprate=2.0
     if not rospy.is_shutdown(): os.system("killall -9 rosmaster") #Clean way to kill roscore if it exists
     # Identify the location of the launch file from the current working directory
     homepath=str(Path.home())
@@ -121,9 +123,12 @@ def main():
         rospy.Subscriber("/PEls_controller", Float32, callback7)
         rospy.Subscriber("/PEl_2_couple", Float32, callback8)
         rospy.Subscriber("/PEl_3_couple", Float32, callback9)
-        MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4]
+        SampleNo+=1
+        MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4,SampleNo]
         print (MeasurementArray)
-        rospy.sleep(0.2)
+        while SampleNo>10: Sleeprate=0.1 
+        Sleeprate=2
+        rospy.sleep(Sleeprate)
         
         while BoxTemp!=0:
             # spin() simply keeps python from exiting until this node is stopped, but it creates issues with timing.
@@ -143,32 +148,38 @@ def main():
                     changeintervalminutes=paramdata["Process"][0]["routines"][cycleindicator-1]["changeintervalminutes"]
                     targettemperature=paramdata["Process"][0]["routines"][cycleindicator-1]["temperature"]
                     if (changedegree==0 and changeintervalminutes==0):
-                        while BoxTemp!=targettemperature:
-                            rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
-                            gradientvstarget=targettemperature-BoxTemp
-                            if (gradientvstarget<0): 
-                                polarity=0 #In the motor controller meaning, "L" means backward, hence inverse polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
-                                voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                            elif(gradientvstarget>0):
-                                polarity=1 #In the motor controller meaning, "R" means forward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
-                                voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                            else:
-                                polarity=1 #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
-                                voltage=0
-                            if voltage<150: 
-                                    voltage=150
-                            else:   voltage=250
-                            #send both voltage and polarity back to Arduino
-                            VoltPolarity=[voltage, polarity,cycleNo]
-                            data_to_send.data = VoltPolarity
-                            #rospy.Publisher("/voltageAndPolarityCommand",Int32MultiArray, callback10)
-                            pubvoltagepolarity.publish(data_to_send) 
-                            #rospy.loginfo(VoltPolarity)
-                            #pub.publish(VoltPolarity)
-                            #rate.sleep()
-                            time.sleep(0.5)
-                            #read again the temperature after 30 seconds
-                            rospy.Subscriber("/box_temp_Celsius", Float32, callback1)                        
+                        while minsdiff<minend:
+                            while BoxTemp!=targettemperature:
+                                rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
+                                gradientvstarget=targettemperature-BoxTemp
+                                if (gradientvstarget<0): 
+                                    polarity=0 #In the motor controller meaning, "L" means backward, hence inverse polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                    voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                                elif(gradientvstarget>0):
+                                    polarity=1 #In the motor controller meaning, "R" means forward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                    voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                                else:
+                                    polarity=1 #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                    voltage=0
+                                if voltage<150: 
+                                        voltage=150
+                                else:   voltage=250
+                                #send both voltage and polarity back to Arduino
+                                VoltPolarity=[voltage, polarity,cycleNo]
+                                data_to_send.data = VoltPolarity
+                                #rospy.Publisher("/voltageAndPolarityCommand",Int32MultiArray, callback10)
+                                pubvoltagepolarity.publish(data_to_send) 
+                                #rospy.loginfo(VoltPolarity)
+                                #pub.publish(VoltPolarity)
+                                #rate.sleep()
+                                time.sleep(0.5)
+                                #read again the temperature after 30 seconds
+                                rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
+                            timenow=datetime.datetime.now()
+                            timediff=timenow-starttime
+                            minsdiff=round((timediff.total_seconds()/60),0)
+                            StatusFollowUp=["StableTemp: "+targettemperature,timenow, voltage,polarity,cycleNo,minsdiff,minend]
+                            print(StatusFollowUp)                        
                     elif (changedegree!=0 and changeintervalminutes!=0):    #here the temperature in the Yaml file is the final temperature from the previous stage. 
                         starttemperature=targettemperature
                         timenowIFgradient=datetime.datetime.now()             #I wanted to make sure not to take the Box temperature as starting value to calculate the gradient, as this may generate errors.
@@ -193,6 +204,10 @@ def main():
                                 #read again the temperature after 30 seconds
                                 rospy.Subscriber("/box_temp_Celsius", Float32, callback1)         
                                 timenowIFgradient=datetime.datetime.now()
+                            StatusFollowUp=["GradientTimestack: "+timestackNo,timenowIFgradient, voltage,polarity,cycleNo,minsdiff,minend]
+                            print(StatusFollowUp)                        
+                StatusFollowUp=["CycleChangeLvl: "+cycleNo,timenowIFgradient, voltage,polarity,cycleNo,minsdiff,minend]
+                print(StatusFollowUp)
   
     #After the machine has finished its cycle, it should kill roscore and its sub processes
     launch.shutdown()
