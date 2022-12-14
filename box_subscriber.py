@@ -13,8 +13,7 @@ from std_msgs.msg import Float32
 from std_msgs.msg import Int32MultiArray
 from std_msgs.msg import String
 
-
-#these are all globa variables, used to take sensors' values
+#GLOBAL VARIABLES, used to take sensors' values and to transfer data between main and sub functions
 BoxTemp =0.0
 DistanceCm=0.0
 Humidity=0.0
@@ -124,7 +123,6 @@ def main():
     # I want to run roscore straight from the Python script and shut it down once the machine finishes her cycle
     # This script also offer the chance to include the launch file. The only issue I need to solve is in case the port changes.
     #during debug, from the terminal window kill roscore master with[killall -9 rosmaster].
-    #MEMO!! For now I kill the roscore launch, but I may want to look at a cleaner killing process, including subprocesses.
     uuid = roslaunch.rlutil.get_or_generate_uuid(options_runid=None, options_wait_for_master=False)
     roslaunch.configure_logging(uuid)
     launch = roslaunch.parent.ROSLaunchParent(uuid, roslaunch_files=[launchfilelocation], is_core=True)
@@ -174,29 +172,31 @@ def main():
                 minstart=paramdata["Process"][0]["routines"][cycleindicator-1]["minstart"]
                 minend=paramdata["Process"][0]["routines"][cycleindicator-1]["minend"]
                 if minend >= minsdiff >= minstart :
-                    cycleNo=paramdata["Process"][0]["routines"][cycleindicator-1]["cycleNo"]
+                    cycleNo=paramdata["Process"][0] ["routines"][cycleindicator-1]["cycleNo"]
                     changedegree=paramdata["Process"][0]["routines"][cycleindicator-1]["changedegree"]
                     changeintervalminutes=paramdata["Process"][0]["routines"][cycleindicator-1]["changeintervalminutes"]
                     targettemperature=paramdata["Process"][0]["routines"][cycleindicator-1]["temperature"]
                     if (changedegree==0 and changeintervalminutes==0):
-                        while minsdiff<minend:
-                            while BoxTemp!=targettemperature:
+                        while BoxTemp!=targettemperature:
+                            while minsdiff<minend:
                                 rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
                                 gradientvstarget=targettemperature-BoxTemp
                                 if (gradientvstarget<0): 
-                                    polarity=0 #In the motor controller meaning, "L" means backward, hence inverse polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                    polarity=1 #In the motor controller meaning, "R"=1=cold means forward, as the peltier was installed with the cold side,
+                                                    # up hence inverse polarity. By convention R=1 (cold), L=0 (hot), so I can transfer bot Integer values 
+                                                    # through my publisher.
                                     voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
                                     voltage=255#For now, I run them max
                                 elif(gradientvstarget>0):
-                                    polarity=1 #In the motor controller meaning, "R" means forward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                    polarity=0 #In the motor controller meaning, "L"=0=hot means backward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
                                     voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                                    voltage=255 #For now, I run them max
+                                    voltage=180 #For now, I run them max
                                 else:
                                     polarity=1 #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
                                     voltage=0
                                 if voltage<150: 
-                                        voltage=200
-                                else:   voltage=255
+                                        voltage=180
+                                else:   voltage=180
                                 #send both voltage and polarity back to Arduino
                                 VoltPolarity=[voltage, polarity,cycleNo]
                                 data_to_send.data = VoltPolarity
@@ -220,7 +220,7 @@ def main():
                                 createlogfile(StatusFollowUp)                      
                     elif (changedegree!=0 and changeintervalminutes!=0):    #here the temperature in the Yaml file is the final temperature from the previous stage. 
                         starttemperature=targettemperature
-                        timenowIFgradient=datetime.datetime.now()             #I wanted to make sure not to take the Box temperature as starting value to calculate the gradient, as this may generate errors.
+                        timenowIFgradient=datetime.datetime.now()            #I wanted to make sure not to take the Box temperature as starting value to calculate the gradient, as this may generate errors.
                         while timenowIFgradient<=minend:
                             timenowIFgradient=datetime.datetime.now()  
                             timestack=timenowIFgradient+changeintervalminutes
@@ -228,12 +228,15 @@ def main():
                             timestackNo+=1
                             while timenowIFgradient<=timestack:
                                 while BoxTemp != temperaturestack:
-                                    voltage=200
-                                    if BoxTemp<temperaturestack: polarity="1" #this is the case of a positive positive for a certain an amount of time change interval minutes        
-                                    elif BoxTemp>temperaturestack: polarity="0" #this is the case of a negative difference for a certain an amount of time change interval minutes
+                                    voltage=180
+                                    if BoxTemp<temperaturestack: polarity=0     # Means I need to heat, hence reverse polarity, 0=hot=L.
+                                                                                # This is the case of a positive for a certain an amount of 
+                                                                                # time change interval minutes        
+                                    elif BoxTemp>temperaturestack: polarity=1   # Means I need to chill. This is the case of a negative difference 
+                                                                                # for a certain an amount of time change interval minutes
                                     else: 
                                         voltage=0
-                                        polarity=1
+                                        polarity=0
                                     #send both voltage and polarity back to Arduino
                                     VoltPolarity=[voltage, polarity,cycleNo]
                                     data_to_send.data = VoltPolarity
@@ -252,8 +255,6 @@ def main():
                 StatusFollowUp=["CycleChangeLvl: "+cycleNo,timenowIFgradient, voltage,polarity,cycleNo,minsdiff,minend]
                 print(StatusFollowUp)
                 createlogfile(StatusFollowUp)
-                
-  
     #After the machine has finished its cycle, it should kill roscore and its sub processes
     launch.shutdown()
   
