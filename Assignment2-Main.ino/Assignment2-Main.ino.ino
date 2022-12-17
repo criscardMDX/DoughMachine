@@ -101,7 +101,8 @@ long publisher_timer;
 #include "DHT.h"
 #define DHTPIN 12                     /* Digital pin connected to the DHT sensor*/
 #define DHTTYPE DHT11                 /* DHT 11*/
-#define sensorPintmpLM35 A8
+#include "DHT.h"
+#define sensorPintmpLM35 A8 /*Temperature Sensor Pin */
 DHT dht(DHTPIN, DHTTYPE);
 
 #define co2Zero 55                    /*calibrated CO2 0 level*/
@@ -336,9 +337,6 @@ duration = pulseIn(echoPin, HIGH);
 inches = microsecondsToInches(duration);
 cm = microsecondsToCentimeters(duration);
 }
-
-
-
 
 long microsecondsToInches(long microseconds) {
    return microseconds / 74 / 2;

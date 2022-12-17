@@ -38,11 +38,6 @@ def createlogfile(logdata):
         LogFile.write(logdata[0]+"\n")
         
 
-
-
-
-
-
 def callback1(data):
     # print the actual message in its raw format
     #rospy.loginfo("The Box temperature in Celsius is Value is: %s", data.data)
@@ -88,13 +83,6 @@ def callback9(data):
     #rospy.loginfo("PEl4 Temperature in Celsius is: %s", data.data)
     global PEl4
     PEl4=data.data    
-
-
-
-
-
-
-
 
 def main():
     VoltPolarity=[0,1,0] #Initialise the message array
@@ -182,18 +170,18 @@ def main():
                                 rospy.Subscriber("/box_temp_Celsius", Float32, callback1)
                                 gradientvstarget=targettemperature-BoxTemp
                                 if (gradientvstarget<0): 
-                                    polarity=1 #In the motor controller meaning, "R"=1=cold means forward, as the peltier was installed with the cold side,
+                                    polarity=0      #For the motor controller, "R"=1=hot and L=0=cold means R means forward=cold, as the peltier was installed with the cold side,
                                                     # up hence inverse polarity. By convention R=1 (cold), L=0 (hot), so I can transfer bot Integer values 
                                                     # through my publisher.
                                     voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                                    voltage=255#For now, I run them max
+                                    voltage=180     #For now, I run them max
                                 elif(gradientvstarget>0):
-                                    polarity=0 #In the motor controller meaning, "L"=0=hot means backward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                    polarity=1      #In the motor controller meaning, "L"=0=hot means backward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
                                     voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                                    voltage=180 #For now, I run them max
+                                    voltage=180     #For now, I run them max
                                 else:
-                                    polarity=1 #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
-                                    voltage=0
+                                    polarity=0      #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                    voltage=1
                                 if voltage<150: 
                                         voltage=180
                                 else:   voltage=180
@@ -229,14 +217,14 @@ def main():
                             while timenowIFgradient<=timestack:
                                 while BoxTemp != temperaturestack:
                                     voltage=180
-                                    if BoxTemp<temperaturestack: polarity=0     # Means I need to heat, hence reverse polarity, 0=hot=L.
+                                    if BoxTemp<temperaturestack: polarity=1     # Means I need to heat, hence reverse polarity, 0=hot=L.
                                                                                 # This is the case of a positive for a certain an amount of 
                                                                                 # time change interval minutes        
-                                    elif BoxTemp>temperaturestack: polarity=1   # Means I need to chill. This is the case of a negative difference 
+                                    elif BoxTemp>temperaturestack: polarity=0   # Means I need to chill. This is the case of a negative difference 
                                                                                 # for a certain an amount of time change interval minutes
                                     else: 
                                         voltage=0
-                                        polarity=0
+                                        polarity=1
                                     #send both voltage and polarity back to Arduino
                                     VoltPolarity=[voltage, polarity,cycleNo]
                                     data_to_send.data = VoltPolarity
