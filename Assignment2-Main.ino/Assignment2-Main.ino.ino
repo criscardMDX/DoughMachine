@@ -77,6 +77,7 @@ Serial.println("PEl voltage is: "+String(PEl_voltage));
         closeMotor(PEl_PolCharPrev);
         delay(100);
      }
+     PEl_PolCharPrev=PEl_PolChar;
   }
   if (PEl_polarity==1){ 
     int PEl_PolChar='R';
@@ -84,14 +85,17 @@ Serial.println("PEl voltage is: "+String(PEl_voltage));
         closeMotor(PEl_PolCharPrev);
         delay(100);
      }
+     PEl_PolCharPrev=PEl_PolChar;
   }
   if (PEl_voltage!=0) {
     setMotor(PEl_PolChar,PEl_voltage);
     Serial.println("Voltage rate: " + String(PEl_voltage));
     Serial.println("Polarity: " + PEl_PolChar);
+    PEl_PolCharPrev=PEl_PolChar;
   }
    else{
     closeMotor(PEl_PolChar);
+    PEl_PolCharPrev=PEl_PolChar;
     }   
 }
 ros::Subscriber<std_msgs::Int32MultiArray> subvolpol("/voltageAndPolarityInput", &mgmtinput);
@@ -103,6 +107,11 @@ long publisher_timer;
 #define DHTTYPE DHT11                 /* DHT 11*/
 #include "DHT.h"
 #define sensorPintmpLM35 A8 /*Temperature Sensor Pin */
+#define sensorPinTmpPEl_1 A0 /*PEl1 Sensor Pin */
+#define sensorPinTmpPEl_2 A1 /*PEl1 Sensor Pin */
+#define sensorPinTmpPEl_3 A2 /*PEl1 Sensor Pin */
+#define sensorPinTmpPEl_4 A3 /*PEl1 Sensor Pin */
+
 DHT dht(DHTPIN, DHTTYPE);
 
 #define co2Zero 55                    /*calibrated CO2 0 level*/
@@ -122,7 +131,7 @@ float tempMax = 0;                    /*variable to store temperature in degree 
 unsigned long interruptcounter = 0;   /* loop counter */
 unsigned long previousMillis = 0;     /* to store previous time */ 
 long duration, inches, cm;
-const long interruptinterval = 2000;  /* every measurement is taken after 2 seconds */
+const long interruptinterval = 500;  /* every measurement is taken after 2 seconds */
 const int pingPin = 5; // Trigger Pin of Ultrasonic Sensor
 const int echoPin = 2; // Echo Pin of Ultrasonic Sensor
 
@@ -207,6 +216,12 @@ nh.advertise(tempc4_pub_ardu);
 pinMode(npnpin,OUTPUT);/* assigning the transistor  pin as an output of Arduino*/
 /*safety speed reset of the motor*/
 analogWrite(npnpin,0);
+pinMode(A0, INPUT);
+pinMode(A1, INPUT);
+pinMode(A2, INPUT);
+pinMode(A3, INPUT);
+pinMode(A8, INPUT);
+
 setPWMfrequency(0x02);// timer 2 , 3.92KHz
 dht.begin();
 pinMode(3,OUTPUT);
@@ -274,14 +289,15 @@ if (currentMillis - previousMillis >= interruptinterval) {
   float LM35temperatureC = voltageLM35 * 100;     /* Convert the voltage into the temperature in Celsius */
   float AvgBoxTemperature = (LM35temperatureC+DHTtemp)/2;
 
-  vout1=analogRead(A0); //Reading the value from sensor
-  vout2=analogRead(A1); //Reading the value from sensor
-  vout3=analogRead(A2); //Reading the value from sensor
-  vout4=analogRead(A3); //Reading the value from sensor
-  tempc1=(vout1*500)/1023;
-  tempc2=(vout2*500)/1023;
-  tempc3=(vout3*500)/1023;
-  tempc4=(vout4*500)/1023;
+  float vout1=analogRead(sensorPinTmpPEl_1); //Reading the value from the temperature sensor in the PEl1 heatsink
+  float vout2=analogRead(sensorPinTmpPEl_2); //Reading the value from sensor
+  float vout3=analogRead(sensorPinTmpPEl_3); //Reading the value from sensor
+  float vout4=analogRead(sensorPinTmpPEl_4); //Reading the value from sensor
+  tempc1=(vout1*(5.0/1024.0))*100/2;
+  tempc2=(vout2*(5.0/1024.0))*100/2;
+  tempc3=(vout3*(5.0/1024.0))*100/2;
+  tempc4=(vout4*(5.0/1024.0))*100/2;
+/*
   Serial.println("Temperature for Fan Peltier1 (Single) is: " +String(tempc1));
   Serial.println("Temperature for Fan Peltier Control (2) is: " +String(tempc2));
   Serial.println("Temperature for Fan Peltier2 (Parallel) is: " +String(tempc3));
@@ -302,6 +318,7 @@ if (currentMillis - previousMillis >= interruptinterval) {
   Serial.print(cm);
   Serial.println("cm");
   Serial.println();
+*/
 /*After prinitng on the serial, I transfer the same data from Arduino to ROS */
   my_CO2ppm_float_data.data = co2ppm;
   CO2ppm_pub_ardu.publish(&my_CO2ppm_float_data);
