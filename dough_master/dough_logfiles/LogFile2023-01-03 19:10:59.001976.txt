@@ -1,0 +1,7 @@
+TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:11:08.089708 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:11:08.089708 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:11:30.438741 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:11:30.438741 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:11:52.793723 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:11:52.793723 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:12:15.155183 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0

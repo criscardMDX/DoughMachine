@@ -1,0 +1,13 @@
+TargetT: 31 | AvgBoxT: 30.28 | Time: 2022-12-23 16:17:44.615044 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 25.4 | Time: 2022-12-23 16:17:46.020059 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 29.55 | Time: 2022-12-23 16:17:47.423787 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 25.94 | Time: 2022-12-23 16:17:48.828146 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 29.11 | Time: 2022-12-23 16:17:50.234008 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 25.69 | Time: 2022-12-23 16:17:51.639713 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 24.72 | Time: 2022-12-23 16:17:53.045754 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 28.62 | Time: 2022-12-23 16:17:54.452912 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 25.2 | Time: 2022-12-23 16:17:55.857916 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 30.33 | Time: 2022-12-23 16:17:57.260534 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 28.38 | Time: 2022-12-23 16:17:58.665278 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 25.2 | Time: 2022-12-23 16:18:00.070347 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 28.67 | Time: 2022-12-23 16:18:01.475131 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
