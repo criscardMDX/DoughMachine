@@ -7,6 +7,8 @@ from yaml.loader import SafeLoader
 import os
 import time
 import datetime
+from datetime import datetime
+from datetime import timedelta
 import logging
 from pathlib import Path
 from std_msgs.msg import Float32
@@ -29,7 +31,7 @@ logpath='/catkin_ws/src/dough_master/dough_logfiles/'                          #
 launchfile='run_dough.launch'
 paramfile='dough_parameters.yaml'
 originalpath=''
-starttime = datetime.datetime.now()
+starttime = datetime.now()
 logfileName="LogFile"
 logdata="no message"
 homePath = str(Path.home())
@@ -49,9 +51,7 @@ def callback1(data):
     #rospy.loginfo("The Box temperature in Celsius is Value is: %s", data.data)
     global BoxTemp
     BoxTemp=round(data.data,2)
-    
-    
-    
+     
 def callback2(data):
     # print the actual message in its raw format
     #rospy.loginfo("The distance in cms is: %s", data.data)
@@ -106,7 +106,7 @@ def spinNode():
         rospy.Subscriber("/PEls_controller", Float32, callback7)
         rospy.Subscriber("/PEl_2_couple", Float32, callback8)
         rospy.Subscriber("/PEl_3_couple", Float32, callback9)
-        rospy.sleep(0.5)
+        rospy.sleep(Sleeprate)
         rospy.spin
 
 def avgBoxTempCelsius(BoxTemp):
@@ -177,7 +177,7 @@ def main():
         rospy.sleep(Sleeprate)
         while BoxTemp!=0:
             # Algorythm to control the temperature in the box. The additional information is in the notes to this experiment (Notes: 10th December)
-            timenow=datetime.datetime.now()
+            timenow=datetime.now()
             timediff=timenow-starttime
             minsdiff=round((timediff.total_seconds()/60),0)
             for cycleindicator in range(1,MaxNoOfCycles+1):
@@ -191,70 +191,87 @@ def main():
                     if (changedegree==0 and changeintervalminutes==0):
                         while BoxTemp!=targettemperature:
                             while minsdiff<minend:
-                                while BoxTemp<38:
-                                    #print (MeasurementArray) ENABLE FOR TESTING
-                                    #Subscriber subfunction callout
-                                    spinNode()
-                                    gradientvstarget=targettemperature-BoxTemp
-                                    if (gradientvstarget<-0.5): 
-                                        polarity=0      #For the motor controller, "R"=1=hot and L=0=cold means R means forward=cold, as the peltier was installed with the cold side,
-                                                        # up hence inverse polarity. By convention R=1 (cold), L=0 (hot), so I can transfer bot Integer values 
-                                                        # through my publisher.
-                                        #voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                                        voltage=200    
-                                    elif(gradientvstarget>0.5):
-                                        polarity=1      #In the motor controller meaning, "L"=0=hot means backward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
-                                        #voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
-                                        voltage=180      #For now, I run them at about 8V, as I read is more efficient
-                                    else:
-                                        polarity=0      #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
-                                        voltage=35      #Thermal shield
-                                    #send both voltage and polarity back to Arduino
-                                    VoltPolarity=[voltage, polarity,cycleNo]
-                                    data_to_send.data = VoltPolarity
-                                    #rospy.Publisher("/voltageAndPolarityCommand",Int32MultiArray, callback10)
-                                    pubvoltagepolarity.publish(data_to_send) 
-                                    #rate.sleep()
-                                    time.sleep(Sleeprate)
-                                    #read again the temperature after 30 seconds
-                                    spinNode()
-                                    timenow=datetime.datetime.now()
-                                    timediff=timenow-starttime
-                                    minsdiff=round((timediff.total_seconds()/60),0)
-                                    StatusFollowUp=["TargetT: "+str(targettemperature)+" | AvgBoxT: "+str(BoxTemp)+" | Time: "+str(timenow)+" | Volts: "+ str(voltage)+
-                                                        " | Polarity: "+str(polarity)+" | CycleNo: "+str(cycleNo)+" | MinsDiff: "+str(minsdiff)+" | MinEnd: "
-                                                        +str(minend)+" | PEl fan tmp: "+str(AveragePElTMPSensors)]
-                                    MsgFollowUp.data = StatusFollowUp
-                                    pubprocessstatus.publish(StatusFollowUp[0])
-                                    time.sleep(Sleeprate)
-                                    print(StatusFollowUp)
-                                    createlogfile(StatusFollowUp)
-                                    MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4,SampleNo]
-                                
-                                while BoxTemp>=targettemperature+3:
-                                    voltage=35
-                                    polarity=1 
-                                    print("overheating protection, temperature above 40 degrees Celsius")
-                                    #send both voltage and polarity back to Arduino
-                                    VoltPolarity=[voltage, polarity,cycleNo]
-                                    data_to_send.data = VoltPolarity
-                                    #rospy.Publisher("/voltageAndPolarityCommand",Int32MultiArray, callback10)
+                                while BoxTemp<targettemperature+3:
+                                    #Here I need something that can run the peltier for 30 seconds without switching the polarity every second. Like an interrupt
+                                    ProcessTimeInterruptStart=datetime.now()
+                                    ProcessTimeInterrupt=datetime.now()
+                                    while ProcessTimeInterrupt<ProcessTimeInterruptStart+timedelta(seconds = 20):                                    
+                                        #print (MeasurementArray) ENABLE FOR TESTING
+                                        #Subscriber subfunction callout
+                                        spinNode()
+                                        gradientvstarget=targettemperature-BoxTemp
+                                        if (gradientvstarget<-0.5): 
+                                            polarity=0      #For the motor controller, "R"=1=hot and L=0=cold means R means forward=cold, as the peltier was installed with the cold side,
+                                                            # up hence inverse polarity. By convention R=1 (cold), L=0 (hot), so I can transfer bot Integer values 
+                                                            # through my publisher.
+                                            #voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                                            voltage=200    
+                                        elif(gradientvstarget>0.5):
+                                            polarity=1      #In the motor controller meaning, "L"=0=hot means backward, hence DC as per original polarity. By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                            #voltage=int((1-(BoxTemp/targettemperature))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                                            voltage=180      #For now, I run them at about 8V, as I read is more efficient
+                                        else:
+                                            polarity=0      #By convention R=1, L=0, so I can transfer bot Integer values through my publisher.
+                                            voltage=35      #Thermal shield
+                                        #send both voltage and polarity back to Arduino
+                                        VoltPolarity=[voltage, polarity,cycleNo]
+                                        data_to_send.data = VoltPolarity
+                                        #rospy.Publisher("/voltageAndPolarityCommand",Int32MultiArray, callback10)
+                                        #pubvoltagepolarity.publish(data_to_send) 
+                                        #rate.sleep()
+                                        time.sleep(Sleeprate)
+                                        #read again the temperature after 30 seconds
+                                        spinNode()
+                                        timenow=datetime.now()
+                                        timediff=timenow-starttime
+                                        minsdiff=round((timediff.total_seconds()/60),0)
+                                        StatusFollowUp=["TargetT: "+str(targettemperature)+" | AvgBoxT: "+str(BoxTemp)+" | Time: "+str(timenow)+" | Volts: "+ str(voltage)+
+                                                            " | Polarity: "+str(polarity)+" | CycleNo: "+str(cycleNo)+" | MinsDiff: "+str(minsdiff)+" | MinEnd: "
+                                                            +str(minend)+" | PEl fan tmp: "+str(AveragePElTMPSensors)]
+                                        MsgFollowUp.data = StatusFollowUp
+                                        pubprocessstatus.publish(StatusFollowUp[0])
+                                        time.sleep(Sleeprate)
+                                        print(StatusFollowUp)
+                                        createlogfile(StatusFollowUp)
+                                        MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4,SampleNo]
+                                        ProcessTimeInterrupt=datetime.now()
+                                    
+                                    while BoxTemp>=targettemperature+3:
+                                        if BoxTemp>35:
+                                            voltage=35
+                                            print("overheating protection, temperature above 40 degrees Celsius")
+                                        elif (gradientvstarget<-0.5 and BoxTemp<35): 
+                                                polarity=0  #For the motor controller, "R"=1=hot and L=0=cold means R means forward=cold, as the peltier was installed with the cold side,
+                                                            # up hence inverse polarity. By convention R=1 (cold), L=0 (hot), so I can transfer bot Integer values 
+                                                            # through my publisher.
+                                                #voltage=int((1-(targettemperature/BoxTemp))*255) #value goes from 0 to 255, but I do not want to boost the Peltier to the max if the gradient is small.
+                                                voltage=200
+                                        else:    
+                                            voltage=35                                    
+                                        #send both voltage and polarity back to Arduino
+                                        VoltPolarity=[voltage, polarity,cycleNo]
+                                        data_to_send.data = VoltPolarity
+                                        #rospy.Publisher("/voltageAndPolarityCommand",Int32MultiArray, callback10)
+                                        #pubvoltagepolarity.publish(data_to_send)
+                                        spinNode()
+                                        timenow=datetime.now()
+                                        timediff=timenow-starttime
+                                        minsdiff=round((timediff.total_seconds()/60),0)
+                                        StatusFollowUp=["TargetT: "+str(targettemperature)+" | AvgBoxT: "+str(BoxTemp)+" | Time: "+str(timenow)+" | Volts: "+ str(voltage)+
+                                                            " | Polarity: "+str(polarity)+" | CycleNo: "+str(cycleNo)+" | MinsDiff: "+str(minsdiff)+" | MinEnd: "
+                                                            +str(minend)+" | PEl fan tmp: "+str(AveragePElTMPSensors)]
+                                        MsgFollowUp.data = StatusFollowUp
+                                        pubprocessstatus.publish(StatusFollowUp[0])
+                                        time.sleep(Sleeprate)
+                                        print(StatusFollowUp)
+                                        createlogfile(StatusFollowUp)
+                                        MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4,SampleNo]
+                                        #print (MeasurementArray) ENABLE FOR TESTING
+                                        ProcessTimeInterrupt=datetime.now()
+                                    ProcessTimeInterrupt=datetime.now()                   
                                     pubvoltagepolarity.publish(data_to_send)
-                                    spinNode()
-                                    timenow=datetime.datetime.now()
-                                    timediff=timenow-starttime
-                                    minsdiff=round((timediff.total_seconds()/60),0)
-                                    StatusFollowUp=["TargetT: "+str(targettemperature)+" | AvgBoxT: "+str(BoxTemp)+" | Time: "+str(timenow)+" | Volts: "+ str(voltage)+
-                                                        " | Polarity: "+str(polarity)+" | CycleNo: "+str(cycleNo)+" | MinsDiff: "+str(minsdiff)+" | MinEnd: "
-                                                        +str(minend)+" | PEl fan tmp: "+str(AveragePElTMPSensors)]
-                                    MsgFollowUp.data = StatusFollowUp
-                                    pubprocessstatus.publish(StatusFollowUp[0])
-                                    time.sleep(Sleeprate)
-                                    print(StatusFollowUp)
-                                    createlogfile(StatusFollowUp)
-                                    MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1,PEl2,PEl3,PEl4,SampleNo]
-                                #print (MeasurementArray) ENABLE FOR TESTING
-                                
+                                    print("data sent back"+ str(data_to_send))
+     
                         #when the temperature aligns with target, switching off completely the Peltier would cause heat or cold to move to the 
                         # opposite surface. As the Peltier works like a resistor, I will run it at 2V to maintain the thermal shield, while
                         #the fans should eliminate the excess gradient. Source (waineh): https://forum.allaboutcircuits.com/threads/running-peltier-thermoelectric-cooler-at-low-standby-voltage.159249/
