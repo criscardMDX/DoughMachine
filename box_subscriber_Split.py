@@ -34,7 +34,9 @@ global voltage
 global polarity
 global cycleNo
 global pubvoltagepolarity
+global ONOFFchilldata_to_send
 global data_to_send
+global startstopchillingunit
 Sleeprate=0.2
 AveragingTempCycles=10
 polarity=1
@@ -230,10 +232,13 @@ def DecidePolarityVoltageToAdopt(gradientvstarget):
         voltage=35
         coolingonoff=1
     elif(gradientvstarget>0.5):
-        # I will activate the motor control and push the heat at 50% of the maximum Wattage: 180/255*12V=
+        # I will activate the motor control and push the heat at 70% of the maximum Wattage: 180/255*12V=8.5 Volts, at 5 Amps = 42.5Watts out of Max 60
+        # I also switch off hte cooling unit. Here I have no issue with the thermal gradient, as I am heating the box.
+        coolingonoff=0
         polarity=1      
         voltage=180      
     else:
+        coolingonoff=0
         polarity=0      
         voltage=35      #Thermal shield
 
@@ -243,8 +248,8 @@ def DecidePolarityVoltageToAdopt(gradientvstarget):
 def SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safetemp,safeinterrupttime):
     global voltage
     global polarity
-    
-    while BoxTemp>maxtempallowed:
+    global coolingonoff
+    while BoxTemp>maxtempallowed-3:
         SecCoolOffProcessTimeInttStart=datetime.now()
         SecCoolOffProcessTimeInt=datetime.now()
         SecCoolOffProcessTimeIntTarget=SecCoolOffProcessTimeInttStart+timedelta(seconds = safeinterrupttime)
@@ -252,7 +257,14 @@ def SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safetemp,safeinterrupttime):
         VoltPolarity=[voltage,polarity,cycleNo]
         data_to_send.data = VoltPolarity
         pubvoltagepolarity.publish(data_to_send)
-        print("data sent back"+ str(data_to_send))
+        #Switch on cooling unit, full blast
+        coolingonoff=1
+        chilOnOff=[coolingonoff]
+        ONOFFchilldata_to_send.data = chilOnOff
+        startstopchillingunit.publish(ONOFFchilldata_to_send)  
+        print("Heat data sent back"+ str(data_to_send.data))
+        print("Chill data sent back"+ str(ONOFFchilldata_to_send.data))
+        
         while SecCoolOffProcessTimeInt<SecCoolOffProcessTimeIntTarget:
             print('Machine cooling down')
             SecCoolOffProcessTimeInt=datetime.now()
@@ -346,16 +358,15 @@ def main():
                                 #I set a safety threshold as I do not want the temperature to ever surpass a certain value, 
                                 # as otherwise it will kill the yeast. safetemp is set at 38 degree Celsius. 
                                 gradientvstarget=targettemperature-BoxTemp
-                                
-                                
-                                
-                                
-                                
                                 DecidePolarityVoltageToAdopt(gradientvstarget)
                                 VoltPolarity=[voltage,polarity,cycleNo]
+                                chilOnOff=[coolingonoff]
                                 data_to_send.data = VoltPolarity
                                 pubvoltagepolarity.publish(data_to_send) ##Send data to the dough machine
-                                print("data sent back"+ str(data_to_send)) #This is a matrix, not an array!!
+                                ONOFFchilldata_to_send.data = chilOnOff
+                                startstopchillingunit.publish(ONOFFchilldata_to_send)                               
+                                print("Heat data sent back"+ str(data_to_send.data)) #This is a matrix, not an array!!
+                                print("Chill data sent back"+ str(ONOFFchilldata_to_send.data)) #This is a matrix, not an array!!
                                 MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat, PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo]                       
                                 timenow=datetime.now()
                                 timediff=timenow-starttime
@@ -367,7 +378,7 @@ def main():
                                 pubprocessstatus.publish(StatusFollowUp[0])    
                                 print(StatusFollowUp)
                                 createlogfile(StatusFollowUp)
-                                
+                            
                                 #After I send the data, I wait the time from the stabilisertimevariable
                                 ProcessTimeInterruptStart=datetime.now()
                                 ProcessTimeInterrupt=datetime.now()
@@ -390,18 +401,23 @@ def main():
                                 MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat,PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo]
                                 #print (MeasurementArray) ENABLE FOR TESTING
                                     
-                                        # when the temperature aligns with target, switching off completely the Peltier would cause heat or cold to move to the 
-                                        # opposite surface. As the Peltier works like a resistor, I will run it at 2V to maintain the thermal shield, while
-                                        #the fans should eliminate the excess gradient. Source (waineh): https://forum.allaboutcircuits.com/threads/running-peltier-thermoelectric-cooler-at-low-standby-voltage.159249/
-                            voltage=35  # From the spec: https://robu.in/product/tec1-12706-thermoelectric-peltier-cooler-12-volt-92-watt/ and 
-                                        # https://peltiermodules.com/peltier.datasheet/TEC1-12706.pdf I take 15V as maximum current, which is equal to 
-                                        # 255 passed on to the motor controller. 2V base current needed for the thermal shield is therefore 35.
-                                        # 35 is therefore equal to 0 thermal input, with thermal shield on.
-                                        # Also, I will not change the polarity towards the last cycle.
+                            # when the temperature aligns with target, switching off completely the Peltier would cause heat or cold to move to the 
+                            # opposite surface. As the Peltier works like a resistor, I will run it at 2V to maintain the thermal shield, while
+                            #the fans should eliminate the excess gradient. Source (waineh): https://forum.allaboutcircuits.com/threads/running-peltier-thermoelectric-cooler-at-low-standby-voltage.159249/
+                            # From the spec: https://robu.in/product/tec1-12706-thermoelectric-peltier-cooler-12-volt-92-watt/ and 
+                            # https://peltiermodules.com/peltier.datasheet/TEC1-12706.pdf I take 15V as maximum current, which is equal to 
+                            # 255 passed on to the motor controller. 2V base current needed for the thermal shield is therefore 35.
+                            # 35 is therefore equal to 0 thermal input, with thermal shield on. Also, I will not change the polarity towards the last cycle.
+                            voltage=35
+                            polarity=0
+                            coolingonoff=0
                             VoltPolarity=[voltage, polarity,cycleNo]
                             data_to_send.data = VoltPolarity
                             pubvoltagepolarity.publish(data_to_send)
+                            ONOFFchilldata_to_send.data = chilOnOff
+                            startstopchillingunit.publish(ONOFFchilldata_to_send)    
                             print("data sent back"+ str(data_to_send))
+                            print("Chill data sent back"+ str(ONOFFchilldata_to_send.data)) #This is a matrix, not an array!!
                             ProcessTimeInterruptStart=datetime.now()
                             ProcessTimeInterrupt=datetime.now()
                             ProcessTimeInterruptTarget=ProcessTimeInterruptStart+timedelta(seconds = PeltierInputstabilisetime)
