@@ -17,23 +17,46 @@
 255 --> 100%
 */
 
+//---------------------------------------------------------------------------------------------------------------
+//                                  INITIALISATION OF THE COOLING UNIT
+//---------------------------------------------------------------------------------------------------------------
+
+int measurePin0 = A0;       /* Fan 4 Chilling Unit */
+int measurePin1 = A1;       /* Fan 3 Chilling Unit */
+int measurePin2 = A2;       /* Fan 1 Heating Unit */
+float temperature0 = 22.0;  /*Starting temperature for the average at Fan 4 */
+float temperature1 = 22.0;  /*Starting temperature for the average at Fan 3 */
+float temperature2 = 22.0;  /*Starting temperature for the average at Fan 1 */
+float temperature3 = 22.0;  /*Starting temperature for the LM35 Sensor inside the box */
+int RelayPin = 7;           /* The relay switches the cooling unit ON or OFF */
+int coolPin0 = 5;           /* This Pin controls Fan 4, MOSFET at Pin 5 */
+int coolPin1 = 6;           /* This Pin controls Fan 3, MOSFET at Pin 6 */
+long switchTime = 10000;    /*time between switches in ms */
+long coolTimer0=0;          /* Interrupt cooling Fan 4 */
+long coolTimer1=0;          /* Interrupt cooling Fan 3 */
+int isCooling0 = LOW;       /* Initial state Cooler 4 - OFF */
+int isCooling1 = LOW;       /* Initial state Cooler 3 - OFF */
+float CmdPublished[7];
 
 //---------------------------------------------------------------------------------------------------------------
-//                                                   DEFINES
+//                                  DEFINITIONS FOR ROS STANDARD MESSAGE PUBLISHERS
 //---------------------------------------------------------------------------------------------------------------
+#include <LiquidCrystal_I2C.h> /*Library for the LCD screen*/
+#include <RunningMedian.h> /* Library to calculate the median, used to derive a correct temperature sensor read */
 #include <ros.h>
 #include <std_msgs/String.h>
 #include <std_msgs/UInt32.h> /* Variables are declared for storing the ROS data types; this is for integers  */
 #include <rosserial_arduino/Adc.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Int32MultiArray.h>
+#include <std_msgs/Float32MultiArray.h>
 
 ros::NodeHandle nh;
 std_msgs::String my_string_data;  /*just a reminder, not needed now. */
 
 /* PUBLISHER BLOCK: One topic for each measurement that I will transfer to ROS */
-std_msgs::Float32 my_temp_float_data; /*Average box temperature in centigrades */
-ros::Publisher boxtemp_pub_ardu("/box_temp_Celsius", &my_temp_float_data  ); /*publisher for the same */
+std_msgs::Float32 AVG_temp_float_data; /*Average box temperature in centigrades */
+ros::Publisher boxtemp_pub_ardu("/box_temp_Celsius", &AVG_temp_float_data  ); /*publisher for the same */
 
 std_msgs::Float32 my_expansion_data; /*Distance between the dough and the ultrasound sensor */
 ros::Publisher expansion_pub_ardu("/Distance_Cms", &my_expansion_data  ); /*publisher for the same */
@@ -44,25 +67,37 @@ ros::Publisher humidity_pub_ardu("/Humidity", &my_humidity_float_data  ); /*publ
 std_msgs::Float32 my_ethy_float_data; /*Ethylene levels inside the box */
 ros::Publisher ethy_pub_ardu("/Ethylene_ppm", &my_ethy_float_data  ); /*publisher for the same */
 
-std_msgs::Float32 my_CO2ppm_float_data; /*Ethylene levels inside the box */
+std_msgs::Float32 my_CO2ppm_float_data; /* CO2 levels inside the box */
 ros::Publisher CO2ppm_pub_ardu("/CO2_ppm", &my_CO2ppm_float_data  ); /*publisher for the same */
 
-std_msgs::Float32 my_tempc1_float_data; /*Peltier 1, temperature differential dissipation heath sink */
-ros::Publisher tempc1_pub_ardu("/PEl_1_single", &my_tempc1_float_data  ); /*publisher for the same */
+std_msgs::Float32 PEl3_temp_float_data; /* PEl 3, chilling unit, temperature taken on the fan at the base of the box */
+ros::Publisher PEl3temp_pub_ardu("/PEl_3_chill", &PEl3_temp_float_data  ); /*publisher for the same */
 
-std_msgs::Float32 my_tempc2_float_data; /*Peltier system control unit, temperature differential dissipation heath sink */
-ros::Publisher tempc2_pub_ardu("/PEls_controller", &my_tempc2_float_data  ); /*publisher for the same */
+std_msgs::Float32 PEl4_temp_float_data; /* PEl 4, chilling unit, temperature taken on the fan at the base of the box */
+ros::Publisher PEl4temp_pub_ardu("/PEl_4_chill", &PEl4_temp_float_data  ); /*publisher for the same */
 
-std_msgs::Float32 my_tempc3_float_data; /*Peltier 2 (couple), temperature differential dissipation heath sink */
-ros::Publisher tempc3_pub_ardu("/PEl_2_couple", &my_tempc3_float_data  ); /*publisher for the same */
+std_msgs::Float32 PEl1_temp_float_data; /*PEl 1, heating unit, temperature taken on the fan at the base of the box  */
+ros::Publisher PEl1temp_pub_ardu("/PEl_1_heat", &PEl1_temp_float_data  ); /*publisher for the same */
 
-std_msgs::Float32 my_tempc4_float_data; /*Peltier 3 (couple), temperature differential dissipation heath sink */
-ros::Publisher tempc4_pub_ardu("/PEl_3_couple", &my_tempc4_float_data  ); /*publisher for the same */
+std_msgs::Float32 LM35_temp_float_data; /* LM35 Temperature sensor, top side of the box */
+ros::Publisher LM35temp_pub_ardu("/LM35_sensor", &LM35_temp_float_data  ); /*publisher for the same */
 
+std_msgs::Float32 DHT_temp_float_data; /* DHT Temperature sensor, top side of the box */
+ros::Publisher DHTtemp_pub_ardu("/DHT_sensor", &DHT_temp_float_data  ); /*publisher for the same */
+
+/* Here I built a diagnostic, to check if the message from ROS is received correctly
+std_msgs::Float32MultiArray DiagnosticprocessStatePublisher; 
+ros::Publisher Diag1Proc_pub_ardu("/DiagnosticProcessStat", &DiagnosticprocessStatePublisher  ); /*publisher for the same */
 
 //---------------------------------------------------------------------------------------------------------------
-//                                          SUBFUNCTION PELTIER CONTROL
+//                                          SUBFUNCTION PELTIER MOTOR CONTROL
 //---------------------------------------------------------------------------------------------------------------
+
+/* I kept the motor as to maintain the possibility of changing polarity. 
+ * In fact, however, I keep the motor only because 1) It's part of the assignment scoring and 2) I will use one Peltier for heating and two for cooling.
+ * Here I monted the PEl back with the cooling position up, ro the R means cooling and the L means heating.
+ * Polarity therefore will be: 0=L=warm and 1=R=chill
+ */ 
 
 void mgmtinput(const std_msgs::Int32MultiArray& voltageprovided){
 int PEl_voltage=voltageprovided.data[0];
@@ -70,14 +105,14 @@ int PEl_polarity=voltageprovided.data[1];
 int CycleNumber=voltageprovided.data[2];
 int PEl_PolCharPrev='R';
 int PEl_PolChar='R';
-Serial.println("PEl voltage is: "+String(PEl_voltage));
+
+//Serial.println("PEl voltage is: "+String(PEl_voltage));
   if (PEl_polarity==0){ 
      int PEl_PolChar='L';
      if (PEl_PolChar!=PEl_PolCharPrev){
         closeMotor(PEl_PolCharPrev);
         delay(100);
      }
-     PEl_PolCharPrev=PEl_PolChar;
   }
   if (PEl_polarity==1){ 
     int PEl_PolChar='R';
@@ -85,37 +120,140 @@ Serial.println("PEl voltage is: "+String(PEl_voltage));
         closeMotor(PEl_PolCharPrev);
         delay(100);
      }
-     PEl_PolCharPrev=PEl_PolChar;
   }
   if (PEl_voltage!=0) {
     setMotor(PEl_PolChar,PEl_voltage);
-    Serial.println("Voltage rate: " + String(PEl_voltage));
-    Serial.println("Polarity: " + PEl_PolChar);
-    PEl_PolCharPrev=PEl_PolChar;
+    //Serial.println("Voltage rate: " + String(PEl_voltage));
+    //Serial.println("Polarity: " + PEl_PolChar);
   }
    else{
     closeMotor(PEl_PolChar);
-    PEl_PolCharPrev=PEl_PolChar;
     }   
 }
+
+//---------------------------------------------------------------------------------------------------------------
+//                                          SUBFUNCTION CHILLING UNIT
+//---------------------------------------------------------------------------------------------------------------
+
+/* As I separated heated from chilling, due to issues with heat accumulation on the PEls, I created a separate message to activate the chilling unit 
+ *  and I will decide whether the motor or the unit get activated from ROS. 1 means "SWITCH ON" while 0 "SWITCH OFF".
+ *  I used an array, as it is easier in case I have to add instructions.
+ */
+
+void cmdchill(const std_msgs::Int32MultiArray& coolingmsg){
+  int CoolingOnOff=coolingmsg.data[0];
+  if (CoolingOnOff==1)
+    { 
+      if (  (isCooling0 == LOW) & (isCooling1 == LOW) & ((coolTimer0 - millis()) > switchTime) )
+        {
+            if (RelayPin==LOW){
+            // Let's turn the relay ON
+                digitalWrite(RelayPin, HIGH);
+            }
+        isCooling0 = HIGH;
+        isCooling1 = HIGH;
+        coolTimer0 = millis();
+        }
+      else 
+      {
+        if ( (isCooling0 == HIGH) & (isCooling1 == HIGH) & ((coolTimer0 - millis()) > switchTime) )
+          {
+            isCooling0 = LOW;
+            isCooling1 = LOW;
+            coolTimer0 = millis();
+          }
+      }
+    }
+  else 
+    {
+      if (RelayPin==HIGH){
+            // Let's turn the relay OFF
+                digitalWrite(RelayPin, LOW);
+            }
+    }
+  
+  digitalWrite(coolPin0,isCooling0);
+  digitalWrite(coolPin1,isCooling1);
+  delay(50);
+}
+
+//---------------------------------------------------------------------------------------------------------------
+//                                          SUBFUNCTION CHILLING UNIT
+//---------------------------------------------------------------------------------------------------------------
+/*This function obtains a multiarray of float data from ROS node. These data includ target and current temperature, 
+ * for display on the LCD screen. This function should contain all needed to create a dashboard, placed on top of the
+ * doughmaster Lid. Note for Future, I need to learn how to extract the data from the function. I tried "return" but 
+ * it did not work.
+ */
+
+
+void cmdoutcome(const std_msgs::Float32MultiArray& subprocstatus){
+  String Label = "Subscribed!";
+  float CmdPublished;
+  LiquidCrystal_I2C lcd(0x27,16,2);
+  lcd.init();
+  lcd.clear();         
+  lcd.backlight();      // Make sure backlight is on
+  lcd.setCursor(2,0);
+  CmdPublished=subprocstatus.data[0];
+  Label="Target Temp";
+  lcd.setCursor(2,0);   //Set cursor to character 2 on line 0
+  lcd.print(CmdPublished);
+  lcd.setCursor(2,1);
+  lcd.print(Label);
+  
+  
+  
+  /*
+  if (CmdPublished=!"") 
+    {
+    lcd.setCursor(2,0);   //Set cursor to character 2 on line 0
+    lcd.print("Dough Master");
+       //Move cursor to character 2 on line 1
+    lcd.print("Ready for use");
+    }
+  else {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(CmdPublished);
+    int CmdPublishedLen = strlen(CmdPublished.c_str());
+  }
+  
+ 
+  // print the message:
+   // for (int positionCounter = 0; positionCounter < CmdPublishedLen+1; positionCounter++) {
+    // scroll one position right:
+   // lcd.scrollDisplayRight();
+    // wait a bit:
+   // delay(50);
+   // }*/
+
+
+  //Serial.println(CmdPublished);
+}
+
+
+//-----------------------------SUBSCRIBER FUNCTIONS--------------------------------------------------------
+//This subscriber receives the instructions for the heating and cooling units to operate. These instructions are: Voltage and Polarity(heat/chill).
 ros::Subscriber<std_msgs::Int32MultiArray> subvolpol("/voltageAndPolarityInput", &mgmtinput);
 
-long publisher_timer;
+//This subscriber reads the diagnostics from ROS, to be launched on the LCD display.
+ros::Subscriber<std_msgs::Float32MultiArray> subcmdmsg("/ProcessStatus", &cmdoutcome);
 
-#include "DHT.h"
+//This subscriber activates and manages the Cooling Unit
+ros::Subscriber<std_msgs::Int32MultiArray> activatechill("/CoolingOn", &cmdchill);
+
+
+//-----------------------------SENSOR INITIALISATION-------------------------------------------------------
+/* Definitions related to the use of sensors */
+#include "DHT.h"                      /*This is the library for the humidity and temperature sensor */
 #define DHTPIN 12                     /* Digital pin connected to the DHT sensor*/
 #define DHTTYPE DHT11                 /* DHT 11*/
-#include "DHT.h"
-#define sensorPintmpLM35 A8 /*Temperature Sensor Pin */
-#define sensorPinTmpPEl_1 A0 /*PEl1 Sensor Pin */
-#define sensorPinTmpPEl_2 A1 /*PEl1 Sensor Pin */
-#define sensorPinTmpPEl_3 A2 /*PEl1 Sensor Pin */
-#define sensorPinTmpPEl_4 A3 /*PEl1 Sensor Pin */
-
+#define sensorPintmpLM35 A8
 DHT dht(DHTPIN, DHTTYPE);
-
 #define co2Zero 55                    /*calibrated CO2 0 level*/
-const int npnpin = 4;                 /*assigning Arduino pins for the giving signal to MOSFET (it was 6 before, but I swapped to make room for the PEl controller*/
+int CmdPublishedLen=0;
+/*const int npnpin = 4;                assigning Arduino pins for the giving signal to MOSFET (it was 6 before, but I swapped to make room for the PEl controller NOT USED*/
 float EthysensorValue;                /*variable to store sensor value Ethylene sensor */
 float tempc1;                         /*variable to store temperature in degree Celsius - Fan1*/
 float vout1;                          /*temporary variable to hold sensor reading - Fan1*/
@@ -127,20 +265,24 @@ float tempc4;                         /*variable to store temperature in degree 
 float vout4;                          /*temporary variable to hold sensor reading - Fan4*/
 float tempAverage;                    /*variable to store temperature in degree Celsius - Fan1*/
 float tempMax = 0;                    /*variable to store temperature in degree Celsius - Fan1*/
-
 unsigned long interruptcounter = 0;   /* loop counter */
 unsigned long previousMillis = 0;     /* to store previous time */ 
 long duration, inches, cm;
-const long interruptinterval = 500;  /* every measurement is taken after 2 seconds */
-const int pingPin = 5; // Trigger Pin of Ultrasonic Sensor
-const int echoPin = 2; // Echo Pin of Ultrasonic Sensor
+const long interruptinterval = 2000;  /* every measurement is taken after 2 seconds */
+const int pingPin = 23; // Trigger Pin of Ultrasonic Sensor
+const int echoPin = 22; // Echo Pin of Ultrasonic Sensor
+long publisher_timer;
 
+const int GreenPin = 2;      // the pin that the LED is attached to
+const int RedPin = 3;      // the pin that the LED is attached to
+const int AmberPin = 4;      // the pin that the LED is attached to
+RunningMedian temperatureArray = RunningMedian(30);
 
 /* code for BTS7960 Motor driver,on timers 1 and 3, inspired by Mohannad Rawashdeh */
-int RPWM=3;
+int RPWM=8;
 int LPWM=11;
-int L_EN=7;
-int R_EN=8;
+int L_EN=9;
+int R_EN=10;
 void setPWMfrequency(int freq){
     TCCR1B = TCCR2B & 0b11111000 | freq ;
     TCCR3B = TCCR2B & 0b11111000 | freq ;
@@ -172,55 +314,69 @@ void closeMotor(char side){
 }
 
 
-/* Here it is important that every time that there is an inversion in polarity, the machine receives a 
- * voltage 0, before reversing, to switch on the polarity on the controller 
+//---------------------------------------------------------------------------------------------------------------
+//                                                  LCD SETUP
+//---------------------------------------------------------------------------------------------------------------
 
- void subscriberCallback(const std_msgs::Int32MultiArray &voltageprovided) {
-         } 
-*/
 
-/* Old example of motor control, used to test the controller
-  for(int i=0;i<256;i++){
-    setMotor('R',i);
-    delay(50);
-  }
-  delay(500);
-  closeMotor('R');
-  delay(1000);
-  for(int i=0;i<256;i++){
-    setMotor('L',i);
-    delay(50);
-  }
-  delay(500);
-  closeMotor('L');
-  delay(1000);
-  */
+LiquidCrystal_I2C lcd(0x27,16,2);  /* set the LCD address to 0x27 for a 16 chars and 2 line display (to determine address, 
+                                     use scan sketch at: https://lastminuteengineers.com/i2c-lcd-arduino-tutorial/  */
 
 //---------------------------------------------------------------------------------------------------------------
 //                                                  SETUP
 //---------------------------------------------------------------------------------------------------------------
 void setup() {
+  
+  // Initialisation of LCD Screen//
+  lcd.init();
+  lcd.clear();         
+  lcd.backlight();      // Make sure backlight is on
+  // Print a message on both lines of the LCD.
+  lcd.setCursor(2,0);   //Set cursor to character 2 on line 0
+  lcd.print("Dough Master");
+  lcd.setCursor(2,1);   //Move cursor to character 2 on line 1
+  lcd.print("Ready for use");
+  // end of LCD Initialisation
+  
+  //Initialisation of LEDs
+  pinMode(GreenPin, OUTPUT);
+  pinMode(RedPin, OUTPUT);
+  pinMode(AmberPin, OUTPUT);
+  digitalWrite(GreenPin, LOW);
+  digitalWrite(RedPin, LOW);
+  digitalWrite(AmberPin, LOW);
 
-nh.initNode();
-nh.subscribe(subvolpol);
-nh.advertise(boxtemp_pub_ardu);
-nh.advertise(expansion_pub_ardu);
-nh.advertise(humidity_pub_ardu);
-nh.advertise(ethy_pub_ardu);
-nh.advertise(CO2ppm_pub_ardu);
-nh.advertise(tempc1_pub_ardu);
-nh.advertise(tempc2_pub_ardu);
-nh.advertise(tempc3_pub_ardu);
-nh.advertise(tempc4_pub_ardu);
-
-pinMode(npnpin,OUTPUT);/* assigning the transistor  pin as an output of Arduino*/
-/*safety speed reset of the motor*/
-analogWrite(npnpin,0);
-pinMode(A0, INPUT);
-pinMode(A1, INPUT);
-pinMode(A2, INPUT);
-pinMode(A3, INPUT);
-pinMode(A8, INPUT);
+  // Set RelayPin as an output pin
+  pinMode(RelayPin, OUTPUT);
+  
+  //analogReference(EXTERNAL );
+  pinMode(coolPin0,OUTPUT);
+  pinMode(coolPin1,OUTPUT);
+  digitalWrite(coolPin0,isCooling0);
+  digitalWrite(coolPin1,isCooling1);
+  
+  // Let's turn on the relay OFF
+  digitalWrite(RelayPin, LOW);
+  
+  // Initialisation of ROS Node and Arduino data publishers
+  nh.initNode();
+  nh.subscribe(subvolpol);
+  nh.subscribe(subcmdmsg);            /*Subscriber to process measurements */
+  nh.subscribe(activatechill);
+  nh.advertise(boxtemp_pub_ardu);
+  nh.advertise(expansion_pub_ardu);
+  nh.advertise(humidity_pub_ardu);
+  nh.advertise(ethy_pub_ardu);
+  nh.advertise(CO2ppm_pub_ardu);
+  nh.advertise(PEl3temp_pub_ardu);
+  nh.advertise(PEl4temp_pub_ardu);
+  nh.advertise(PEl1temp_pub_ardu);
+  nh.advertise(LM35temp_pub_ardu);
+  nh.advertise(DHTtemp_pub_ardu);
+  /*nh.advertise(Diag1Proc_pub_ardu);   /* Diagnostic Process Status. Activate only for diagnostics */
+  
+  
+  //end of Arduino publisher initialisation
 
 setPWMfrequency(0x02);// timer 2 , 3.92KHz
 dht.begin();
@@ -243,23 +399,25 @@ Serial.begin(57600);
 
 
 void loop() {
-float val = 1023;
-float duty = map(val,0,1023,0,255);
-analogWrite(npnpin, duty); //here's how to generate PWM signal from Digital arduino pin
+  /*Here I set the distance measurement from the ultrasonic sensor*/
+  pinMode(pingPin, OUTPUT);
+  digitalWrite(pingPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pingPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(pingPin, LOW);
+  pinMode(echoPin, INPUT);
+  duration = pulseIn(echoPin, HIGH);
+  inches = microsecondsToInches(duration);
+  cm = microsecondsToCentimeters(duration);
+  /*In this block I use an interrupt to establish the frequency of all sensors' measurements.
+  I do not want to measure too often as this process does not need constant monitoring */
 
-//int PEl_voltage=voltageprovided.data[0];
-//int PEl_polarity=voltageprovided.data[1];
-//int CycleNumber=voltageprovided.data[2];
-
-
-/*In this block I use an interrupt to establish the frequency of all sensors' measurements.
-I do not want to measure too often as this process does not need constant monitoring */
-
-unsigned long currentMillis= millis(); /* and compare with previous time taken */
-if (currentMillis - previousMillis >= interruptinterval) {
+  unsigned long currentMillis= millis(); /* and compare with previous time taken */
+  if (currentMillis - previousMillis >= interruptinterval) {
   previousMillis = currentMillis; // save current time as prev
   
-/*CO2 sensor reading stack */  
+  /*CO2 sensor reading stack */  
   int co2now[10];                               //int array for co2 readings
   int co2raw = 0;                               //int for raw value of co2
   int co2comp = 0;                              //int for compensated co2 
@@ -270,7 +428,6 @@ if (currentMillis - previousMillis >= interruptinterval) {
     co2now[x]=analogRead(A7);
     //Serial.println(co2now[x]);
    }
-
   for (int x = 0;x<10;x++){                     //add samples together
     co2sampling=co2sampling + co2now[x];
    }
@@ -278,82 +435,99 @@ if (currentMillis - previousMillis >= interruptinterval) {
   co2comp = co2raw - co2Zero;                 //get compensated value
   co2ppm = map(co2comp,0,1023,50,2000);      //map value for atmospheric levels
 
-/* Ethylene Sensor reading stack */
+  /* Temperature measured at the base of the box Fans 3 and 4, Cooling Unit */
+  temperature0 = (0.8 * temperature0) + (0.2 * temperatureC(measurePin0));
+  temperature1 = (0.8 * temperature1 )+ (0.2 * temperatureC(measurePin1));
+
+  /* Temperature measured at the base of the box Fan 1, Heating or Cooling Unit */
+  temperature2 = (0.8 * temperature2 )+ (0.2 * temperatureC(measurePin2));
+  
+  /* Temperature measured by the LM35 sensor inside the box */
+  temperature3 = (0.8 * temperature3 )+ (0.2 * temperatureC(sensorPintmpLM35));
+  float LM35temperatureC = temperature3;     /* Convert the voltage into the temperature in Celsius */
+  
+  /* Ethylene Sensor reading stack */
   EthysensorValue = analogRead(A6); // read analog input pin A6 for the Ethylene sensor
-/* Humidity andf Temperature sensor reading stack */
+
+  /* Humidity and Temperature sensor reading stack */
   float DHTtemp= dht.readTemperature();
   float DHThumidity= dht.readHumidity();
-/* LM35 Temperature sensor stack */
-  int readingLM35 = analogRead(sensorPintmpLM35);
-  float voltageLM35 = readingLM35 * (5.0 / 1024.0);   /* Convert that reading into voltage */
-  float LM35temperatureC = voltageLM35 * 100;     /* Convert the voltage into the temperature in Celsius */
-  float AvgBoxTemperature = (LM35temperatureC+DHTtemp)/2;
+  /* Average Box Temperature */
+  float AvgBoxTemperature = (LM35temperatureC+DHTtemp+temperature0+temperature1+temperature2)/5;
 
-  float vout1=analogRead(sensorPinTmpPEl_1); //Reading the value from the temperature sensor in the PEl1 heatsink
-  float vout2=analogRead(sensorPinTmpPEl_2); //Reading the value from sensor
-  float vout3=analogRead(sensorPinTmpPEl_3); //Reading the value from sensor
-  float vout4=analogRead(sensorPinTmpPEl_4); //Reading the value from sensor
-  tempc1=(vout1*(5.0/1024.0))*100/2;
-  tempc2=(vout2*(5.0/1024.0))*100/2;
-  tempc3=(vout3*(5.0/1024.0))*100/2;
-  tempc4=(vout4*(5.0/1024.0))*100/2;
-/*
-  Serial.println("Temperature for Fan Peltier1 (Single) is: " +String(tempc1));
-  Serial.println("Temperature for Fan Peltier Control (2) is: " +String(tempc2));
-  Serial.println("Temperature for Fan Peltier2 (Parallel) is: " +String(tempc3));
-  Serial.println("Temperature for Fan Peltier3 (Parallel) is: " +String(tempc4));
-  Serial.println("The fan duty rate 0:255 is: " +String(duty));
-  Serial.println ("CO2 ppm is: " + String(co2ppm));
-  Serial.println ("Ethylene ppm is: " + String(EthysensorValue));
-  Serial.println ("Box temperature Sensor1 is: " + String(DHTtemp));
-  Serial.println ("Humidity: " + String(DHThumidity));
-  Serial.print("LM35 Temperature: ");
+  /* Serial Monitor Printing for diagnostics 
+  Serial.println("Temperature for Fan 4 Chilling Unit is: " +String(temperature0));
+  Serial.println("Temperature for Fan 3 Chilling Unit is: " +String(temperature1));
+  Serial.println("Temperature for Fan 1 Heating Unit is: " +String(temperature2));
+  Serial.println ("Box temperature DHT Sensor is: " + String(DHTtemp));
+  Serial.print("Box temperature LM35 Sensor: ");
   Serial.println(LM35temperatureC);
   Serial.print("Box Average Temperature: ");
-  Serial.print(AvgBoxTemperature);  
+  Serial.print(AvgBoxTemperature);
   Serial.print("\xC2\xB0"); // shows degree symbol
   Serial.println("C  |  ");
+  Serial.println ("CO2 ppm is: " + String(co2ppm));
+  Serial.println ("Ethylene ppm is: " + String(EthysensorValue));
+  Serial.println ("Humidity: " + String(DHThumidity));
   Serial.print(inches);
   Serial.print("in, ");
   Serial.print(cm);
   Serial.println("cm");
   Serial.println();
-*/
-/*After prinitng on the serial, I transfer the same data from Arduino to ROS */
+  */
+  
+/*I transfer the same data from Arduino to ROS */
   my_CO2ppm_float_data.data = co2ppm;
   CO2ppm_pub_ardu.publish(&my_CO2ppm_float_data);
-  my_temp_float_data.data = AvgBoxTemperature;
-  boxtemp_pub_ardu.publish(&my_temp_float_data);
   my_expansion_data.data = cm;
   expansion_pub_ardu.publish(&my_expansion_data);
   my_humidity_float_data.data = DHThumidity;
   humidity_pub_ardu.publish(&my_humidity_float_data);
   my_ethy_float_data.data = EthysensorValue;
   ethy_pub_ardu.publish(&my_ethy_float_data); 
-  my_tempc1_float_data.data = tempc1;
-  tempc1_pub_ardu.publish(&my_tempc1_float_data);
-  my_tempc2_float_data.data = tempc2;
-  tempc2_pub_ardu.publish(&my_tempc2_float_data);
-  my_tempc3_float_data.data = tempc3;
-  tempc3_pub_ardu.publish(&my_tempc3_float_data);
-  my_tempc4_float_data.data = tempc4;
-  tempc4_pub_ardu.publish(&my_tempc4_float_data);
-  
+  PEl3_temp_float_data.data = temperature0;
+  PEl3temp_pub_ardu.publish(&PEl3_temp_float_data);
+  PEl4_temp_float_data.data = temperature1;
+  PEl4temp_pub_ardu.publish(&PEl4_temp_float_data);
+  PEl1_temp_float_data.data = temperature2;
+  PEl1temp_pub_ardu.publish(&PEl1_temp_float_data);
+  LM35_temp_float_data.data = LM35temperatureC;
+  LM35temp_pub_ardu.publish(&LM35_temp_float_data);
+  DHT_temp_float_data.data = DHTtemp;
+  DHTtemp_pub_ardu.publish(&DHT_temp_float_data);
+  AVG_temp_float_data.data = AvgBoxTemperature;
+  boxtemp_pub_ardu.publish(&AVG_temp_float_data);
+  /*Diagnostic - Publish what you get from ROS
+  Diag1Proc_pub_ardu.publish(&DiagnosticprocessStatePublisher);*/
   }
 nh.spinOnce();
+delay(500);
 
-/*Here I set the distance measurement from the ultrasonic sensor*/
-pinMode(pingPin, OUTPUT);
-digitalWrite(pingPin, LOW);
-delayMicroseconds(2);
-digitalWrite(pingPin, HIGH);
-delayMicroseconds(10);
-digitalWrite(pingPin, LOW);
-pinMode(echoPin, INPUT);
-duration = pulseIn(echoPin, HIGH);
-inches = microsecondsToInches(duration);
-cm = microsecondsToCentimeters(duration);
+
 }
+
+//---------------------------------------------------------------------------------------------------------------
+//                                               SUPPORTING FUNCTIONS
+//---------------------------------------------------------------------------------------------------------------
+
+// Calculate the Median of the temperature (most obtained value for the sensors)
+float temperatureC(int sensorPin){   
+ analogRead(sensorPin);
+ delay(100);
+ for (int n=0;n<30;n++){
+  temperatureArray.add(analogRead(sensorPin));
+  delay(5);
+ }
+ float reading = temperatureArray.getMedian();
+ // converting that reading to voltage, for 11v arduino use 11
+ float voltage = (reading * 467)/1023; //measured with the voltimeter, Arduino's Volts are not exactly 5
+ // print out the voltage
+ //Serial.print(voltage); Serial.println(" volts");
+ // now print out the temperature
+ float temperatureC = voltage ;  //converting from 10 mv per degree wit 500 mV offset to degrees ((voltage - 500mV) times 100)
+ return temperatureC; 
+}
+
 
 long microsecondsToInches(long microseconds) {
    return microseconds / 74 / 2;
