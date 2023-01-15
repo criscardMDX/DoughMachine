@@ -15,6 +15,7 @@ import logging
 from pathlib import Path
 from std_msgs.msg import Float32
 from std_msgs.msg import Int32MultiArray
+from std_msgs.msg import Float32MultiArray
 from std_msgs.msg import String
 
 #Initialise GLOBAL VARIABLES, used to take sensors' values and to transfer data between main and sub functions
@@ -33,6 +34,7 @@ global AveragingTempCycles
 global voltage
 global polarity
 global cycleNo
+global coolingonoff
 global pubvoltagepolarity
 global ONOFFchilldata_to_send
 global data_to_send
@@ -42,8 +44,8 @@ AveragingTempCycles=10
 polarity=1
 voltage=35
 maxtempallowed=42
-safetemp=38
 safeinterrupttime=15
+coolingonoff=0
 BoxTemp =0.0
 DistanceCm=0.0
 Humidity=0.0
@@ -53,6 +55,7 @@ PEl3Chill=0.0
 PEl4Chill=0.0
 LM35Sensor=0.0
 DHTSensor=0.0
+PEl1Heat=0.0
 launchpath = '/catkin_ws/src/dough_master/dough_launch/'
 parampath = '/catkin_ws/src/dough_master/dough_parameters/'
 logpath='/catkin_ws/src/dough_master/dough_logfiles/'                          # The correct address should be: '/catkin_ws/src/dough_master/dough_logfiles'#
@@ -245,7 +248,7 @@ def DecidePolarityVoltageToAdopt(gradientvstarget):
 ##0008 Fubnction for safety, if the box reaches the max temperature allowed in the settings (42 degrees Celsius), then it should switch off
 ##      then wait at threshold voltage for an amount of seconds (15 seconds), then start a cooling process to bring the machine to a safe temperature of (36 degrees Celsius).
 ##  This function must also have an interrupt
-def SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safetemp,safeinterrupttime):
+def SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safeinterrupttime):
     global voltage
     global polarity
     global coolingonoff
@@ -264,18 +267,17 @@ def SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safetemp,safeinterrupttime):
         startstopchillingunit.publish(ONOFFchilldata_to_send)  
         print("Heat data sent back"+ str(data_to_send.data))
         print("Chill data sent back"+ str(ONOFFchilldata_to_send.data))
-        
         while SecCoolOffProcessTimeInt<SecCoolOffProcessTimeIntTarget:
             print('Machine cooling down')
             SecCoolOffProcessTimeInt=datetime.now()
-        while(BoxTemp<safetemp):
-            polarity=0          # For the motor controller, "R"=1=hot=forward and L=0=cold=backward, as the peltier was installed with the hot side up.
-                                # In the arduino R=1 (forward), L=0 (backward/reverse polarity), so I can transfer both Integer values through my publisher and Arduino will assign "R" and "L".
-            voltage=200
-            VoltPolarity=[voltage,polarity,cycleNo]
-            data_to_send.data = VoltPolarity
-            pubvoltagepolarity.publish(data_to_send)
-            print("data sent back from Temperature Security Function"+ str(data_to_send))
+        #while(BoxTemp<safetemp):
+        #    polarity=0          # For the motor controller, "R"=1=hot=forward and L=0=cold=backward, as the peltier was installed with the hot side up.
+        #                        # In the arduino R=1 (forward), L=0 (backward/reverse polarity), so I can transfer both Integer values through my publisher and Arduino will assign "R" and "L".
+        #    voltage=200
+        #    VoltPolarity=[voltage,polarity,cycleNo]
+        #    data_to_send.data = VoltPolarity
+        #    pubvoltagepolarity.publish(data_to_send)
+        #    print("data sent back from Temperature Security Function"+ str(data_to_send))
 
 def main():
     global voltage
@@ -283,11 +285,12 @@ def main():
     global cycleNo
     global VoltPolarity
     global chilOnOff
-    global safetemp
+    global coolingonoff
     print(os.path.expanduser('~'))
     VoltPolarity=[35,1,0] #Initialise the message array
     chilOnOff=[0]
     SampleNo=0
+    StatusFUp_msg=[0.00,0.00,0.00,0.00,0.00,0.00,0.00]
     StatusFollowUp='no message'
     PeltierInputstabilisetime=20
     homepath=str(Path.home())
@@ -308,9 +311,9 @@ def main():
     data_to_send = Int32MultiArray()
     data_to_send.data = VoltPolarity
     #Initialise the Node that will communicate the status of the process, to be displayed on the Arduino's LCD
-    pubprocessstatus=rospy.Publisher('/ProcessStatus', String, queue_size=10)
-    MsgFollowUp = String()
-    MsgFollowUp.data = StatusFollowUp
+    pubprocessstatus=rospy.Publisher('/ProcessStatus', Float32MultiArray, queue_size=10)
+    SFUp_msg = Float32MultiArray()
+    SFUp_msg.data = StatusFUp_msg
     #Initialise the Node that will start or stop the chilling unit in Arduino
     startstopchillingunit=rospy.Publisher('/CoolingOn', Int32MultiArray, queue_size=10)
     ONOFFchilldata_to_send = Int32MultiArray()
@@ -320,13 +323,12 @@ def main():
     while not rospy.is_shutdown():
         rospy.init_node('Dough_Machine_Input_Manager', anonymous=True)
         pubvoltagepolarity.publish(data_to_send)
-        pubprocessstatus.publish(StatusFollowUp[0])
-        startstopchillingunit.publish(chilOnOff[0])
+        pubprocessstatus.publish(SFUp_msg)
+        startstopchillingunit.publish(ONOFFchilldata_to_send)
         #Subscriber subfunction callout
         #spinNode()
         avgBoxSensorReadings()
         SampleNo+=1
-        AveragePElTMPSensors=(PEl1Heat+PEl3Chill+PEl4Chill+LM35Sensor+DHTSensor)/5
         MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat,PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo]
         print (MeasurementArray)
         #while (SampleNo>2 and BoxTemp==0): Sleeprate=0
@@ -335,6 +337,7 @@ def main():
             avgBoxSensorReadings()
             MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat,PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo,datetime.now()]
             print (MeasurementArray)
+            print ("Connecting")
             SampleNo+=1
         # Algorythm to control the temperature in the box. The additional information is in the notes to this experiment (Notes: 10th December)
         timenow=datetime.now()
@@ -356,7 +359,7 @@ def main():
                             while BoxTemp!=targettemperature:
                                 avgBoxSensorReadings()
                                 #I set a safety threshold as I do not want the temperature to ever surpass a certain value, 
-                                # as otherwise it will kill the yeast. safetemp is set at 38 degree Celsius. 
+                                # as otherwise it will kill the yeast. MaxTemp is set at 43 degree Celsius. 
                                 gradientvstarget=targettemperature-BoxTemp
                                 DecidePolarityVoltageToAdopt(gradientvstarget)
                                 VoltPolarity=[voltage,polarity,cycleNo]
@@ -371,14 +374,15 @@ def main():
                                 timenow=datetime.now()
                                 timediff=timenow-starttime
                                 minsdiff=round((timediff.total_seconds()/60),0)
-                                StatusFollowUp=["TargetT: "+str(targettemperature)+" | AvgBoxT: "+str(BoxTemp)+" | Time: "+str(timenow)+" | Volts: "+ str(voltage)+
-                                                    " | Polarity: "+str(polarity)+" | CycleNo: "+str(cycleNo)+" | MinsDiff: "+str(minsdiff)+" | MinEnd: "
-                                                    +str(minend)+" | PEl fan tmp: "+str(AveragePElTMPSensors)]
-                                MsgFollowUp.data = StatusFollowUp
-                                pubprocessstatus.publish(StatusFollowUp[0])    
+                                #Publish status on Computer and stored log file
+                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
                                 print(StatusFollowUp)
-                                createlogfile(StatusFollowUp)
-                            
+                                createlogfile(StatusFollowUp)  
+                                #Publish status on ROS
+                                StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                                for item in range(len(StatusFUp_msg)):
+                                    SFUp_msg.data[item] = StatusFUp_msg[item]
+                                pubprocessstatus.publish(SFUp_msg)
                                 #After I send the data, I wait the time from the stabilisertimevariable
                                 ProcessTimeInterruptStart=datetime.now()
                                 ProcessTimeInterrupt=datetime.now()
@@ -387,17 +391,19 @@ def main():
                                     #print (MeasurementArray) ENABLE FOR TESTING
                                     #Subscriber subfunction callout
                                     #spinNode()
-                                    SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safetemp,safeinterrupttime)
+                                    SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safeinterrupttime)
                                     avgBoxSensorReadings()
                                     ProcessTimeInterrupt=datetime.now()
                                 time.sleep(Sleeprate)
-                                StatusFollowUp=["TargetT: "+str(targettemperature)+" | AvgBoxT: "+str(BoxTemp)+" | Time: "+str(timenow)+" | Volts: "+ str(voltage)+
-                                                    " | Polarity: "+str(polarity)+" | CycleNo: "+str(cycleNo)+" | MinsDiff: "+str(minsdiff)+" | MinEnd: "
-                                                    +str(minend)+" | PEl fan tmp: "+str(AveragePElTMPSensors)]
-                                MsgFollowUp.data = StatusFollowUp
-                                pubprocessstatus.publish(StatusFollowUp[0])    
+                                #Publish status on Computer and stored log file
+                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
                                 print(StatusFollowUp)
-                                createlogfile(StatusFollowUp)
+                                createlogfile(StatusFollowUp)  
+                                #Publish status on ROS
+                                StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                                for item in range(len(StatusFUp_msg)):
+                                    SFUp_msg.data[item] = StatusFUp_msg[item]
+                                pubprocessstatus.publish(SFUp_msg)
                                 MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat,PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo]
                                 #print (MeasurementArray) ENABLE FOR TESTING
                                     
@@ -425,7 +431,7 @@ def main():
                                 #print (MeasurementArray) ENABLE FOR TESTING
                                 #Subscriber subfunction callout
                                 #spinNode()
-                                SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safetemp,safeinterrupttime)
+                                SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safeinterrupttime)
                                 avgBoxSensorReadings()
                                 ProcessTimeInterrupt=datetime.now()
                             #read again the temperature after 30 seconds
@@ -433,14 +439,15 @@ def main():
                             timenow=datetime.datetime.now()
                             timediff=timenow-starttime
                             minsdiff=round((timediff.total_seconds()/60),0)
-                            StatusFollowUp=["TargetT: "+str(targettemperature)+" | AvgBoxT: "+str(BoxTemp)+" | Time: "+str(timenow)+" | Volts: "+ str(voltage)+
-                                                " | Polarity: "+str(polarity)+" | CycleNo: "+str(cycleNo)+" | MinsDiff: "+str(minsdiff)+" | MinEnd: "
-                                                +str(minend)+" | PEl fan tmp: "+str(AveragePElTMPSensors)]
-                            MsgFollowUp.data = StatusFollowUp
-                            pubprocessstatus.publish(StatusFollowUp[0])
-                            time.sleep(Sleeprate)
+                            #Publish status on Computer and stored log file
+                            StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
                             print(StatusFollowUp)
-                            createlogfile(StatusFollowUp)      
+                            createlogfile(StatusFollowUp)  
+                            #Publish status on ROS
+                            StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                            for item in range(len(StatusFUp_msg)):
+                                SFUp_msg.data[item] = StatusFUp_msg[item]
+                            pubprocessstatus.publish(SFUp_msg)
                             MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat,PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo]
                             print (MeasurementArray)
                 
@@ -455,34 +462,84 @@ def main():
                         timestackNo+=1
                         while timenowIFgradient<=timestack:
                             while BoxTemp != temperaturestack:
-                                voltage=180
-                                if BoxTemp<temperaturestack: polarity=1     # Means I need to heat, hence reverse polarity, 0=hot=L.
-                                                                            # This is the case of a positive for a certain an amount of 
-                                                                            # time change interval minutes        
-                                elif BoxTemp>temperaturestack: polarity=0   # Means I need to chill. This is the case of a negative difference 
-                                                                            # for a certain an amount of time change interval minutes
-                                else: 
-                                    voltage=0
-                                    polarity=1
+                                avgBoxSensorReadings()
+                                #I set a safety threshold as I do not want the temperature to ever surpass a certain value, 
+                                # as otherwise it will kill the yeast. MaxTemp is set at 43 degree Celsius. 
+                                gradientvstarget=targettemperature-BoxTemp
+                                DecidePolarityVoltageToAdopt(gradientvstarget)
                                 #send both voltage and polarity back to Arduino
                                 VoltPolarity=[voltage, polarity,cycleNo]
                                 data_to_send.data = VoltPolarity
-                                pubvoltagepolarity.publish(data_to_send) 
-                                time.sleep(Sleeprate)
-                                #read again the temperature after 30 seconds
-                                rospy.Subscriber("/box_temp_Celsius", Float32, callback1)         
-                                timenowIFgradient=datetime.datetime.now()
-                                StatusFollowUp=["GradientTimestack: "+str(timestackNo)+" | "+str(timenowIFgradient)+" | "+ str(voltage)+" | "+
-                                                str(polarity)+" | "+str(cycleNo)+" | "+str(minsdiff)+" | "+str(minend)+" | PEl fan tmp: "+
-                                                    str(AveragePElTMPSensors)]
-                                MsgFollowUp.data = StatusFollowUp
-                                pubprocessstatus.publish(StatusFollowUp[0])
-                                time.sleep(Sleeprate)
+                                pubvoltagepolarity.publish(data_to_send)
+                                chilOnOff=[coolingonoff]
+                                ONOFFchilldata_to_send.data = chilOnOff
+                                startstopchillingunit.publish(ONOFFchilldata_to_send)   
+                                print("Heat data sent back"+ str(data_to_send.data)) #This is a matrix, not an array!!
+                                print("Chill data sent back"+ str(ONOFFchilldata_to_send.data)) #This is a matrix, not an array!!
+                                MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat, PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo]           
+                                SFUp_msg.data = StatusFUp_msg
+                                rospy.loginfo(SFUp_msg)
+                                pubprocessstatus.publish(SFUp_msg)
                                 print(StatusFollowUp)
-                                createlogfile(StatusFollowUp)                        
-        StatusFollowUp=["CycleChangeLvl: "+cycleNo,timenowIFgradient, voltage,polarity,cycleNo,minsdiff,minend]
+                                createlogfile(StatusFollowUp)
+                                time.sleep(Sleeprate)        
+                                timenowIFgradient=datetime.datetime.now()
+                                #Publish status on Computer and stored log file
+                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
+                                print(StatusFollowUp)
+                                createlogfile(StatusFollowUp)
+                                #Publish status on ROS
+                                StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                                for item in range(len(StatusFUp_msg)):
+                                    SFUp_msg.data[item] = StatusFUp_msg[item]
+                                pubprocessstatus.publish(SFUp_msg)
+                                time.sleep(Sleeprate)
+                            voltage=35
+                            polarity=0
+                            coolingonoff=0
+                            VoltPolarity=[voltage, polarity,cycleNo]
+                            data_to_send.data = VoltPolarity
+                            pubvoltagepolarity.publish(data_to_send)
+                            ONOFFchilldata_to_send.data = chilOnOff
+                            startstopchillingunit.publish(ONOFFchilldata_to_send)    
+                            print("data sent back"+ str(data_to_send))
+                            print("Chill data sent back"+ str(ONOFFchilldata_to_send.data)) #This is a matrix, not an array!!
+                            ProcessTimeInterruptStart=datetime.now()
+                            ProcessTimeInterrupt=datetime.now()
+                            ProcessTimeInterruptTarget=ProcessTimeInterruptStart+timedelta(seconds = PeltierInputstabilisetime)
+                            while ProcessTimeInterrupt<ProcessTimeInterruptTarget:                                    
+                                #print (MeasurementArray) ENABLE FOR TESTING
+                                #Subscriber subfunction callout
+                                #spinNode()
+                                SecurityCoolOff(cycleNo,BoxTemp,maxtempallowed,safeinterrupttime)
+                                avgBoxSensorReadings()
+                                ProcessTimeInterrupt=datetime.now()
+                            #read again the temperature after 30 seconds
+                            spinNode()        
+                            timenow=datetime.datetime.now()
+                            timediff=timenow-starttime
+                            minsdiff=round((timediff.total_seconds()/60),0)
+                            #Publish status on Computer and stored log file
+                            StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
+                            print(StatusFollowUp)
+                            createlogfile(StatusFollowUp)  
+                            #Publish status on ROS
+                            StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                            for item in range(len(StatusFUp_msg)):
+                                SFUp_msg.data[item] = StatusFUp_msg[item]
+                            pubprocessstatus.publish(SFUp_msg)
+                            time.sleep(Sleeprate)
+                            MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat,PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo]
+                            print (MeasurementArray)                      
+        #Publish status on Computer and stored log file
+        StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
         print(StatusFollowUp)
-        createlogfile(StatusFollowUp)
+        createlogfile(StatusFollowUp)  
+        #Publish status on ROS
+        StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+        for item in range(len(StatusFUp_msg)):
+            SFUp_msg.data[item] = StatusFUp_msg[item]
+        pubprocessstatus.publish(SFUp_msg)
         #After the machine has finished its cycle, it should kill roscore and its sub processes
         rospy.launch.shutdown()
   
