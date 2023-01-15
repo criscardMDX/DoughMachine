@@ -1,0 +1,15 @@
+TargetT: 31 | AvgBoxT: 24.53 | Time: 2023-01-13 16:05:30.144792 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.1 | Time: 2023-01-13 16:05:30.144792 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.1 | Time: 2023-01-13 16:05:52.498864 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.08 | Time: 2023-01-13 16:05:52.498864 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.07 | Time: 2023-01-13 16:06:14.869349 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.39 | Time: 2023-01-13 16:06:14.869349 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.41 | Time: 2023-01-13 16:06:37.246376 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.46 | Time: 2023-01-13 16:06:37.246376 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.43 | Time: 2023-01-13 16:06:59.639602 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 2.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.14 | Time: 2023-01-13 16:06:59.639602 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 2.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.12 | Time: 2023-01-13 16:07:22.022162 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 2.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.35 | Time: 2023-01-13 16:07:22.022162 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 2.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.36 | Time: 2023-01-13 16:07:44.433862 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 2.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.41 | Time: 2023-01-13 16:07:44.433862 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 2.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.42 | Time: 2023-01-13 16:08:06.812310 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 3.0 | MinEnd: 45 | PEl fan tmp: 0.0

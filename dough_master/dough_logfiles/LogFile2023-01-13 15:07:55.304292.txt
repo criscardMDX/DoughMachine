@@ -1,0 +1,5 @@
+TargetT: 31 | AvgBoxT: 25.19 | Time: 2023-01-13 15:08:08.619606 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.58 | Time: 2023-01-13 15:08:08.619606 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.6 | Time: 2023-01-13 15:08:30.944845 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.44 | Time: 2023-01-13 15:08:30.944845 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
+TargetT: 31 | AvgBoxT: 26.43 | Time: 2023-01-13 15:08:53.307714 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0
