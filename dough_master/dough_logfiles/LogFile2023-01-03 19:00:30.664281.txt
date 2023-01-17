@@ -1,3 +1,0 @@
-TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:00:39.690914 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
-TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:00:39.690914 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0
-TargetT: 31 | AvgBoxT: nan | Time: 2023-01-03 19:01:02.036081 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 0.0

@@ -1,1 +1,0 @@
-TargetT: 31 | AvgBoxT: 26.09 | Time: 2023-01-13 16:29:36.927614 | Volts: 180 | Polarity: 1 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 0.0

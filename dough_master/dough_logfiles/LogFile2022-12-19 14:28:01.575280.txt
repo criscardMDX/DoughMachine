@@ -1,3 +1,0 @@
-TargetT: 31 | AvgBoxT: 34.76 | Time: 2022-12-19 14:28:19.846639 | Volts: 200 | Polarity: 0 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 31.819661458333332
-TargetT: 31 | AvgBoxT: 35.0 | Time: 2022-12-19 14:28:30.279360 | Volts: 35 | Polarity: 0 | CycleNo: 1 | MinsDiff: 0.0 | MinEnd: 45 | PEl fan tmp: 31.819661458333332
-TargetT: 31 | AvgBoxT: 32.51 | Time: 2022-12-19 14:28:40.714028 | Volts: 200 | Polarity: 0 | CycleNo: 1 | MinsDiff: 1.0 | MinEnd: 45 | PEl fan tmp: 31.819661458333332
