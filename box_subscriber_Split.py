@@ -229,17 +229,19 @@ def DecidePolarityVoltageToAdopt(gradientvstarget):
     global voltage
     global polarity
     global coolingonoff
+    ##gradientvstarget=targettemperature-BoxTemp, hence if gradient<0, means I need to chill
     if (gradientvstarget<-0.5):
         # I will activate the chilling unit and Put the motor control in state L=heating, but at voltage of 35, only to maintain the heat shield.
-        polarity=0      
-        voltage=35
         coolingonoff=1
+        polarity=1      
+        voltage=35
     elif(gradientvstarget>0.5):
+        ##gradientvstarget=targettemperature-BoxTemp, hence if gradient>0, means I need to heat
         # I will activate the motor control and push the heat at 70% of the maximum Wattage: 180/255*12V=8.5 Volts, at 5 Amps = 42.5Watts out of Max 60
         # I also switch off hte cooling unit. Here I have no issue with the thermal gradient, as I am heating the box.
         coolingonoff=0
-        polarity=1      
-        voltage=180      
+        polarity=0     
+        voltage=255      
     else:
         coolingonoff=0
         polarity=0      
@@ -290,7 +292,7 @@ def main():
     VoltPolarity=[35,1,0] #Initialise the message array
     chilOnOff=[0]
     SampleNo=0
-    StatusFUp_msg=[0.00,0.00,0.00,0.00,0.00,0.00,0.00]
+    StatusFUp_msg=[0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00]
     StatusFollowUp='no message'
     PeltierInputstabilisetime=20
     homepath=str(Path.home())
@@ -375,11 +377,13 @@ def main():
                                 timediff=timenow-starttime
                                 minsdiff=round((timediff.total_seconds()/60),0)
                                 #Publish status on Computer and stored log file
-                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
+                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; Cooling: "+str(coolingonoff)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
                                 print(StatusFollowUp)
+                                MeasurementArray=[BoxTemp,DistanceCm,Humidity,Ethylene_ppm,CO2_ppm,PEl1Heat,PEl3Chill,PEl4Chill,LM35Sensor,DHTSensor,SampleNo,datetime.now()]
+                                print (MeasurementArray)
                                 createlogfile(StatusFollowUp)  
                                 #Publish status on ROS
-                                StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                                StatusFUp_msg=StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity,coolingonoff,cycleNo, minsdiff, minend]
                                 for item in range(len(StatusFUp_msg)):
                                     SFUp_msg.data[item] = StatusFUp_msg[item]
                                 pubprocessstatus.publish(SFUp_msg)
@@ -396,7 +400,7 @@ def main():
                                     ProcessTimeInterrupt=datetime.now()
                                 time.sleep(Sleeprate)
                                 #Publish status on Computer and stored log file
-                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
+                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; Cooling: "+str(coolingonoff)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
                                 print(StatusFollowUp)
                                 createlogfile(StatusFollowUp)  
                                 #Publish status on ROS
@@ -440,11 +444,11 @@ def main():
                             timediff=timenow-starttime
                             minsdiff=round((timediff.total_seconds()/60),0)
                             #Publish status on Computer and stored log file
-                            StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
+                            StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; Cooling: "+str(coolingonoff)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
                             print(StatusFollowUp)
                             createlogfile(StatusFollowUp)  
                             #Publish status on ROS
-                            StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                            StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity,coolingonoff,cycleNo, minsdiff, minend]
                             for item in range(len(StatusFUp_msg)):
                                 SFUp_msg.data[item] = StatusFUp_msg[item]
                             pubprocessstatus.publish(SFUp_msg)
@@ -485,11 +489,11 @@ def main():
                                 time.sleep(Sleeprate)        
                                 timenowIFgradient=datetime.datetime.now()
                                 #Publish status on Computer and stored log file
-                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
+                                StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; Cooling: "+str(coolingonoff)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
                                 print(StatusFollowUp)
                                 createlogfile(StatusFollowUp)
                                 #Publish status on ROS
-                                StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                                StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity,coolingonoff,cycleNo, minsdiff, minend]
                                 for item in range(len(StatusFUp_msg)):
                                     SFUp_msg.data[item] = StatusFUp_msg[item]
                                 pubprocessstatus.publish(SFUp_msg)
@@ -520,11 +524,11 @@ def main():
                             timediff=timenow-starttime
                             minsdiff=round((timediff.total_seconds()/60),0)
                             #Publish status on Computer and stored log file
-                            StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
+                            StatusFollowUp="TargetT: "+str(targettemperature)+" ; AvgBoxT: "+str(BoxTemp)+" ; Time: "+str(timenow)+" ; Volts: "+ str(voltage)+" ; Polarity: "+str(polarity)+" ; Cooling: "+str(coolingonoff)+" ; CycleNo: "+str(cycleNo)+" ; MinsDiff: "+str(minsdiff)+" ; MinEnd: "+str(minend)
                             print(StatusFollowUp)
                             createlogfile(StatusFollowUp)  
                             #Publish status on ROS
-                            StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+                            StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity,coolingonoff,cycleNo, minsdiff, minend]
                             for item in range(len(StatusFUp_msg)):
                                 SFUp_msg.data[item] = StatusFUp_msg[item]
                             pubprocessstatus.publish(SFUp_msg)
@@ -536,7 +540,7 @@ def main():
         print(StatusFollowUp)
         createlogfile(StatusFollowUp)  
         #Publish status on ROS
-        StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity, cycleNo, minsdiff, minend]
+        StatusFUp_msg=[targettemperature, BoxTemp, voltage, polarity,coolingonoff,cycleNo, minsdiff, minend]
         for item in range(len(StatusFUp_msg)):
             SFUp_msg.data[item] = StatusFUp_msg[item]
         pubprocessstatus.publish(SFUp_msg)
