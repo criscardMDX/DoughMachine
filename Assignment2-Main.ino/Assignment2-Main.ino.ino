@@ -26,10 +26,10 @@ const int RedPin = 47;                // Machine Still Processing
 /*Const int uses less memory */
 
 /* I need booleans to turn on or off within the various functions*/
-bool BlueSwitch =0;
-bool AmberSwitch =0;
-bool GreenSwitch =0;
-bool RedSwitch =0;
+bool BlueSwitch =false;
+bool AmberSwitch =false;
+bool GreenSwitch =false;
+bool RedSwitch =false;
 
 //---------------------------------------------------------------------------------------------------------------
 //                                  INITIALISATION OF THE COOLING UNIT
@@ -50,7 +50,7 @@ long coolTimer0=0;                    /* Interrupt cooling Fan 4 */
 long coolTimer1=0;                    /* Interrupt cooling Fan 3 */
 int isCooling0 = LOW;                 /* Initial state Cooler 4 - OFF */
 int isCooling1 = LOW;                 /* Initial state Cooler 3 - OFF */
-float CmdPublished[7];
+float CmdPublished;
 
 //---------------------------------------------------------------------------------------------------------------
 //                                  INITIALISATION OF ALL SENSORS
@@ -130,9 +130,10 @@ ros::Publisher LM35temp_pub_ardu("/LM35_sensor", &LM35_temp_float_data  ); /*pub
 std_msgs::Float32 DHT_temp_float_data; /* DHT Temperature sensor, top side of the box */
 ros::Publisher DHTtemp_pub_ardu("/DHT_sensor", &DHT_temp_float_data  ); /*publisher for the same */
 
-/* Here I built a diagnostic, to check if the measurements' message from ROS is received correctly
+/* Here I built a diagnostic, to check if the measurements' message from ROS is received correctly */
 std_msgs::Float32MultiArray DiagnosticprocessStatePublisher; 
-ros::Publisher Diag1Proc_pub_ardu("/DiagnosticProcessStat", &DiagnosticprocessStatePublisher  ); /*publisher for the same */
+ros::Publisher Diag1Proc_pub_ardu("/DiagnosticProcessStat", &DiagnosticprocessStatePublisher  ); 
+/*publisher for the same */
 
 //---------------------------------------------------------------------------------------------------------------
 //                                          SUBFUNCTION PELTIER MOTOR CONTROL
@@ -156,16 +157,15 @@ int PEl_PolChar='R';
      int PEl_PolChar='L';
      if (PEl_PolChar!=PEl_PolCharPrev){
         /*Machine is ON RedLED Goes ON */
-        digitalWrite(RedPin, HIGH);
+        /*digitalWrite(RedPin, HIGH);
         digitalWrite(GreenPin, LOW);
         digitalWrite(BluePin, LOW);
-        digitalWrite(AmberPin, HIGH);
-        BlueSwitch =0;
-        AmberSwitch =1;
-        GreenSwitch =0;
-        RedSwitch =1;
-
-        closeMotor(PEl_PolCharPrev);
+        digitalWrite(AmberPin, HIGH);*/
+        BlueSwitch =false;
+        AmberSwitch =true;
+        GreenSwitch =false;
+        RedSwitch =true;
+        closeMotor(PEl_PolChar);
         delay(100);
      }
   }
@@ -173,18 +173,19 @@ int PEl_PolChar='R';
     int PEl_PolChar='R';
     if (PEl_PolChar!=PEl_PolCharPrev){
         /*Machine is ON RedLED Goes ON */
-        digitalWrite(RedPin, HIGH);
+        /*digitalWrite(RedPin, HIGH);
         digitalWrite(BluePin, HIGH);
         digitalWrite(GreenPin, LOW);
-        digitalWrite(AmberPin, LOW);
-        BlueSwitch =1;
-        AmberSwitch =0;
-        GreenSwitch =0;
-        RedSwitch =1;
-        closeMotor(PEl_PolCharPrev);
+        digitalWrite(AmberPin, LOW);*/
+        BlueSwitch =true;
+        AmberSwitch =false;
+        GreenSwitch =false;
+        RedSwitch =true;
+        closeMotor(PEl_PolChar);
         delay(100);
      }
   }
+  
   if (PEl_voltage!=0) {
     setMotor(PEl_PolChar,PEl_voltage);
     //Serial.println("Voltage rate: " + String(PEl_voltage));
@@ -194,8 +195,37 @@ int PEl_PolChar='R';
     closeMotor(PEl_PolChar);
         digitalWrite(BluePin, LOW);
         digitalWrite(AmberPin, LOW);
-    
     }   
+  
+  
+  if(RedSwitch){
+    digitalWrite(RedPin, HIGH);
+  }
+  else {
+    digitalWrite(RedPin, LOW);
+  }
+  
+  if(AmberSwitch){
+    digitalWrite(AmberPin, HIGH);
+  }
+  else {
+    digitalWrite(AmberPin, LOW);
+  }
+  
+  if(BlueSwitch){
+    digitalWrite(BluePin, HIGH);
+  }
+  else {
+    digitalWrite(BluePin, LOW);
+  }
+  
+  if(GreenSwitch){
+    digitalWrite(GreenPin, HIGH);
+  }
+  else {
+    digitalWrite(GreenPin, LOW);
+  }
+
 }
 
 //---------------------------------------------------------------------------------------------------------------
@@ -220,14 +250,14 @@ void cmdchill(const std_msgs::Int32MultiArray& coolingmsg){
         isCooling0 = HIGH;
         isCooling1 = HIGH;
         coolTimer0 = millis();
-        digitalWrite(RedPin, HIGH);
+        /*digitalWrite(RedPin, HIGH);
         digitalWrite(BluePin, HIGH);
         digitalWrite(GreenPin, LOW);
-        digitalWrite(AmberPin, LOW);
-        RedSwitch =1;
-        BlueSwitch =1;
-        AmberSwitch =0;
-        GreenSwitch =0;
+        digitalWrite(AmberPin, LOW);*/
+        RedSwitch =true;
+        BlueSwitch =true;
+        AmberSwitch =false;
+        GreenSwitch =false;
         }
       else 
       {
@@ -235,14 +265,14 @@ void cmdchill(const std_msgs::Int32MultiArray& coolingmsg){
           {
             isCooling0 = LOW;
             isCooling1 = LOW;
-            digitalWrite(RedPin, HIGH);
+            /*digitalWrite(RedPin, HIGH);
             digitalWrite(BluePin, LOW);
             digitalWrite(GreenPin, LOW);
-            digitalWrite(AmberPin, LOW);
-            RedSwitch =1;
-            BlueSwitch =0;
-            AmberSwitch =0;
-            GreenSwitch =0;
+            digitalWrite(AmberPin, LOW);*/
+            RedSwitch =true;
+            BlueSwitch =false;
+            AmberSwitch =false;
+            GreenSwitch =false;
             coolTimer0 = millis();
           }
       }
@@ -252,19 +282,50 @@ void cmdchill(const std_msgs::Int32MultiArray& coolingmsg){
       if (RelayPin==HIGH){
             // Let's turn the relay OFF
                 digitalWrite(RelayPin, LOW);
-                digitalWrite(RedPin, LOW);
+                /*digitalWrite(RedPin, LOW);
                 digitalWrite(BluePin, LOW);
                 digitalWrite(GreenPin, LOW);
-                digitalWrite(AmberPin, LOW);
-                RedSwitch =0;
-                BlueSwitch =0;
-                AmberSwitch =0;
-                GreenSwitch =0;
+                digitalWrite(AmberPin, LOW);*/
+                RedSwitch =false;
+                BlueSwitch =false;
+                AmberSwitch =false;
+                GreenSwitch =false;
             }
     }
   digitalWrite(coolPin0,isCooling0);
   digitalWrite(coolPin1,isCooling1);
   delay(50);
+
+  if(RedSwitch){
+    digitalWrite(RedPin, HIGH);
+  }
+  else {
+    digitalWrite(RedPin, LOW);
+  }
+  
+  if(AmberSwitch){
+    digitalWrite(AmberPin, HIGH);
+  }
+  else {
+    digitalWrite(AmberPin, LOW);
+  }
+  
+  if(BlueSwitch){
+    digitalWrite(BluePin, HIGH);
+  }
+  else {
+    digitalWrite(BluePin, LOW);
+  }
+  
+  if(GreenSwitch){
+    digitalWrite(GreenPin, HIGH);
+  }
+  else {
+    digitalWrite(GreenPin, LOW);
+  }
+
+
+  
 }
 
 //---------------------------------------------------------------------------------------------------------------
@@ -278,18 +339,19 @@ void cmdchill(const std_msgs::Int32MultiArray& coolingmsg){
  
 void cmdoutcome(const std_msgs::Float32MultiArray& subprocstatus){
   #define ARRAYSIZE 10
-  String Label [ARRAYSIZE]= {"Target Temp","Current Temp", "Voltage", "Polarity", "Cycle Nr", "Mins Past", "Mins End"};
+  String Label [ARRAYSIZE]= {"Target Temp","Current Temp", "Voltage", "Polarity", "Cooling ON/OFF", "Cycle Nr", "Mins Past", "Mins End"};
   float CmdPublished;
   String LabelStart="Connected";
   unsigned long previousMillis = 0;
   const long TimeInterval = 1200;
+  DiagnosticprocessStatePublisher.data=subprocstatus.data;
   LiquidCrystal_I2C lcd(0x27,16,2);
   lcd.init();
   lcd.clear();         
   lcd.backlight();      // Make sure backlight is on
   lcd.setCursor(2,0);
   lcd.print("Connection OK");
-    for (int countL = 0;countL<7;countL++){
+    for (int countL = 0;countL<8;countL++){
       LabelStart=Label[countL];
       unsigned long TimeStart= millis(); /* take the time now, start of the process */
       unsigned long TimeEnd= TimeStart+TimeInterval; /* take the time now, start of the process */
@@ -307,6 +369,34 @@ void cmdoutcome(const std_msgs::Float32MultiArray& subprocstatus){
       }  
     }
   //Serial.println(CmdPublished);
+    if(RedSwitch){
+    digitalWrite(RedPin, HIGH);
+  }
+  else {
+    digitalWrite(RedPin, LOW);
+  }
+  
+  if(AmberSwitch){
+    digitalWrite(AmberPin, HIGH);
+  }
+  else {
+    digitalWrite(AmberPin, LOW);
+  }
+  
+  if(BlueSwitch){
+    digitalWrite(BluePin, HIGH);
+  }
+  else {
+    digitalWrite(BluePin, LOW);
+  }
+  
+  if(GreenSwitch){
+    digitalWrite(GreenPin, HIGH);
+  }
+  else {
+    digitalWrite(GreenPin, LOW);
+  }
+
 }
 
 //---------------------------------------------------------------------------------------------------------------
@@ -425,7 +515,7 @@ void setup() {
   nh.advertise(PEl1temp_pub_ardu);
   nh.advertise(LM35temp_pub_ardu);
   nh.advertise(DHTtemp_pub_ardu);
-  /*nh.advertise(Diag1Proc_pub_ardu);   /* Diagnostic Process Status. Activate only for diagnostics */
+  nh.advertise(Diag1Proc_pub_ardu);   /* Diagnostic Process Status. Activate only for diagnostics */
   
   // Initialisation of Motor Controls //
   setPWMfrequency(0x02);// timer 2 , 3.92KHz
@@ -449,40 +539,36 @@ void setup() {
 
 void loop() {
   /*Machine is ON RedLED Goes ON */
-  RedSwitch =1;
+  RedSwitch =true;
   
-  if(RedSwitch=1){
+  if(RedSwitch){
     digitalWrite(RedPin, HIGH);
   }
   else {
     digitalWrite(RedPin, LOW);
   }
   
-  if(AmberSwitch=1){
+  if(AmberSwitch){
     digitalWrite(AmberPin, HIGH);
   }
   else {
     digitalWrite(AmberPin, LOW);
   }
   
-  if(BlueSwitch=1){
+  if(BlueSwitch){
     digitalWrite(BluePin, HIGH);
   }
   else {
     digitalWrite(BluePin, LOW);
   }
   
-  if(GreenSwitch=1){
+  if(GreenSwitch){
     digitalWrite(GreenPin, HIGH);
   }
   else {
     digitalWrite(GreenPin, LOW);
   }
-  
-  digitalWrite(RedPin, HIGH);
-  digitalWrite(BluePin, LOW);
-  digitalWrite(GreenPin, LOW);
-  digitalWrite(AmberPin, LOW);
+
   
   /*Here I set the distance measurement from the ultrasonic sensor*/
   pinMode(pingPin, OUTPUT);
@@ -582,8 +668,9 @@ void loop() {
   DHTtemp_pub_ardu.publish(&DHT_temp_float_data);
   AVG_temp_float_data.data = AvgBoxTemperature;
   boxtemp_pub_ardu.publish(&AVG_temp_float_data);
-  /*Diagnostic - Publish what you get from ROS
-  Diag1Proc_pub_ardu.publish(&DiagnosticprocessStatePublisher);*/
+  /*Diagnostic - Publish what you get from ROS*/
+  
+  Diag1Proc_pub_ardu.publish(&DiagnosticprocessStatePublisher);
   }
 nh.spinOnce();
 delay(500);
