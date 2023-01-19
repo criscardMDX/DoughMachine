@@ -75,7 +75,7 @@ def createlogfile(logdata):
     #for entry in entries:
     #    print(entry)
     with open(homePath+"/"+logpath+logfileName+str(starttime)+".txt", 'a') as LogFile:
-        LogFile.write(logdata[0]+"\n")
+        LogFile.write(logdata+"\n")
 
 ##0002 CallBack This function takes the third set of values from the Box read 
 ##      I have created a separate callback for each value read from the dough machine

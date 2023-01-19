@@ -41,7 +41,7 @@ const int measurePin2 = A2;           /* Fan 1 Heating Unit */
 const int RelayPin = 7;               /* The relay switches the cooling unit ON or OFF */
 const int coolPin0 = 5;               /* This Pin controls Fan 4, MOSFET at Pin 5 */
 const int coolPin1 = 6;               /* This Pin controls Fan 3, MOSFET at Pin 6 */
-const long switchTime = 10000;        /*time between switches in ms */
+const long switchTime = 60000;        /*time between switches in ms */
 float temperature0 = 22.0;            /*Starting temperature for the average at Fan 4 */
 float temperature1 = 22.0;            /*Starting temperature for the average at Fan 3 */
 float temperature2 = 22.0;            /*Starting temperature for the average at Fan 1 */
@@ -152,10 +152,11 @@ int CycleNumber=voltageprovided.data[2];
 int PEl_PolCharPrev='R'; /*Default on Chill */
 int PEl_PolChar='R';
 
+
 //Serial.println("PEl voltage is: "+String(PEl_voltage)); L= Heat, R=Chill
   if (PEl_polarity==0){ 
      int PEl_PolChar='L';
-     if (PEl_PolChar!=PEl_PolCharPrev){
+     closeMotor('R');
         /*Machine is ON RedLED Goes ON */
         /*digitalWrite(RedPin, HIGH);
         digitalWrite(GreenPin, LOW);
@@ -165,13 +166,11 @@ int PEl_PolChar='R';
         AmberSwitch =true;
         GreenSwitch =false;
         RedSwitch =true;
-        closeMotor(PEl_PolChar);
-        delay(100);
-     }
-  }
+        //delay(100);
+  }  
   if (PEl_polarity==1){ 
     int PEl_PolChar='R';
-    if (PEl_PolChar!=PEl_PolCharPrev){
+    closeMotor('L');
         /*Machine is ON RedLED Goes ON */
         /*digitalWrite(RedPin, HIGH);
         digitalWrite(BluePin, HIGH);
@@ -181,9 +180,7 @@ int PEl_PolChar='R';
         AmberSwitch =false;
         GreenSwitch =false;
         RedSwitch =true;
-        closeMotor(PEl_PolChar);
-        delay(100);
-     }
+        //delay(100);   
   }
   
   if (PEl_voltage!=0) {

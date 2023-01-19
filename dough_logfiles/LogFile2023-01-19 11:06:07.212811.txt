@@ -1,0 +1,11 @@
+TargetT: 10 ; AvgBoxT: 17.06 ; Time: 2023-01-19 11:06:20.542666 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 0.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.79 ; Time: 2023-01-19 11:06:20.542666 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 0.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.64 ; Time: 2023-01-19 11:06:42.910559 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 1.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.52 ; Time: 2023-01-19 11:06:42.910559 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 1.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.52 ; Time: 2023-01-19 11:07:05.277697 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 1.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.48 ; Time: 2023-01-19 11:07:05.277697 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 1.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.44 ; Time: 2023-01-19 11:07:27.654975 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 1.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.16 ; Time: 2023-01-19 11:07:27.654975 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 1.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.16 ; Time: 2023-01-19 11:07:50.031901 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 2.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 24.16 ; Time: 2023-01-19 11:07:50.031901 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 2.0 ; MinEnd: 45
+TargetT: 10 ; AvgBoxT: 23.95 ; Time: 2023-01-19 11:08:12.406502 ; Volts: 35 ; Polarity: 1 ; Cooling: 1 ; CycleNo: 1 ; MinsDiff: 2.0 ; MinEnd: 45
