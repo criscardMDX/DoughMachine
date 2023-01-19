@@ -9,7 +9,7 @@ Process:
       - cycleNo: 1
         changedegree: 0
         changeintervalminutes: 0
-        temperature: 31
+        temperature: 10
         minstart: 0
         minend: 45
       - cycleNo: 2
