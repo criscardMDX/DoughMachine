@@ -1939,7 +1939,7 @@
 				}
 			],
 			"type" : "PATH",
-			"value" : "GTest_DIR-NOTFOUND"
+			"value" : "/home/criscar/anaconda3/lib/cmake/GTest"
 		},
 		{
 			"name" : "INSTALL_GTEST",
